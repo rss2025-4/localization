@@ -2,6 +2,8 @@ from localization.sensor_model import SensorModel
 from localization.motion_model import MotionModel
 
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import LaserScan
+from visualization_msgs.msg import Marker
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
 from rclpy.node import Node
@@ -62,7 +64,10 @@ class ParticleFilter(Node):
         # Initialize the models
         self.motion_model = MotionModel(self)
         self.sensor_model = SensorModel(self)
+        
 
+        # visualize motion model particles
+        # self.particles_pub = self.create_publisher(Marker, "/motion_model_particles", 1)
         self.get_logger().info("=============+READY+=============")
 
         # Implement the MCL algorithm
@@ -74,8 +79,43 @@ class ParticleFilter(Node):
         #
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
+    def laser_callback(self, msg):
+        observation = msg.ranges
+        self.sensor_model.evaluate(updated_particles, observation)
+        # pass
+        # self.sensor_model.update_sensor(msg)
+    def odom_callback(self, msg):
+        x_velocity = msg.twist.twist.linear.x
+        y_velocity = msg.twist.twist.linear.y
+        angular_velocity = msg.twist.twist.angular.z
+        current_time = msg.header.stamp*1e-9
+        
+        updated_particles = self.motion_model.update_odometry(x_velocity, y_velocity, angular_velocity, current_time)
+        # pass
+    # def publish_particles(self):
+    #     all_points = Marker()
+    #     all_points.type = Marker.POINTS
+    #     all_points.header.frame_id = "/laser"
 
+    #     all_points.scale.x = 0.1
+    #     all_points.scale.y = 0.1
+    #     all_points.color.a = 1.
+    #     all_points.color.r = color[0]
+    #     all_points.color.g = color[1]
+    #     all_points.color.g = color[2]
+        
+    #     updated_particles = [[0.0,1.0,0.0],[0.0,2.0,0.0]]#self.motion_model.evaluate()
 
+    #     for particle in updated_particles:
+    #         p = Point()
+    #         p.x = particle[0]
+    #         p.y = particle[1]
+    #         # p.z = 0
+    #         all_points.points.append(p)
+
+    #     self.particles_pub.publish(all_points)
+    def pose_callback(self, msg):
+        pass
 def main(args=None):
     rclpy.init(args=args)
     pf = ParticleFilter()
