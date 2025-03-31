@@ -31,11 +31,12 @@ class SensorModel:
 
         ####################################
         # Adjust these parameters
-        self.alpha_hit = 0
-        self.alpha_short = 0
-        self.alpha_max = 0
-        self.alpha_rand = 0
-        self.sigma_hit = 0
+        # to match the assets/debug_precomputed_table.pkl
+        self.alpha_hit = 0.74 # probability ray 
+        self.alpha_short = 0.07
+        self.alpha_max = 0.07
+        self.alpha_rand = 0.12
+        self.sigma_hit = 8.0
 
         # Your sensor table will be a `table_width` x `table_width` np array:
         self.table_width = 201
@@ -86,9 +87,27 @@ class SensorModel:
         returns:
             No return type. Directly modify `self.sensor_model_table`.
         """
-
-        raise NotImplementedError
-
+        # self.sensor_model_table 
+        
+        hit_coeff = 1/(np.sqrt(2*np.pi*self.sigma_hit**2))
+        # actual_ranges = np.linspace(self.z_min, self.z_max, self.table_width)
+        z_max = self.table_width - 1
+        
+        max_coeff = 1/(0.1)
+        rand_coeff = 1/z_max
+        for z in range(self.table_width):
+            for d in range(self.table_width):
+                # Compute the probability of measuring z given z_actual
+                # and the sensor model parameters
+                short_coeff = 0 if d == 0 else 2/d
+                p_hit = hit_coeff*np.exp(-(z-d)**2/(2*self.sigma_hit**2)) if 0<=z<=z_max else 0
+                p_short = short_coeff*(1-(z/d)) if 0<=z<=d and d!=0 else 0
+                p_max = max_coeff if z_max-0.1<=z<=z_max else 0
+                p_rand = rand_coeff if 0<=z<=z_max else 0
+                p = self.alpha_hit*p_hit + self.alpha_short*p_short + self.alpha_max*p_max + self.alpha_rand*p_rand
+                self.sensor_model_table[z, d] = p
+        return
+    
     def evaluate(self, particles, observation):
         """
         Evaluate how likely each particle is given
@@ -124,7 +143,16 @@ class SensorModel:
         scans = self.scan_sim.scan(particles)
 
         ####################################
-
+    def laser_callback(self, msg):
+        # ! is this the right way to get z_max?
+        self.z_max = np.max(msg.ranges)
+        # ! is range min the minimum possible distance the lidar can measure?
+        # ! or is the minimum distance that was scanned (useful)
+        self.z_min = msg.range_min
+        
+        
+        
+        
     def map_callback(self, map_msg):
         # Convert the map to a numpy array
         self.map = np.array(map_msg.data, np.double) / 100.
