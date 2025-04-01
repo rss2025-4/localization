@@ -82,14 +82,16 @@ class ParticleFilter(Node):
         
         # odom data = motion model 
         # sensor model to resample 
-        self.particles = np.zeros((self.NUM_PARTICLES, 3))
+        self.particles = None
         self.particle_publisher = self.create_publisher(Marker, "/particle", 1)
         
         
     def laser_callback(self, msg):
         self.sensor_model.laser_callback(msg)
     def odom_callback(self, msg):
-        pass
+        if not self.particles:
+            return
+        self.particles = self.motion_model.evaluate(self.particles, msg)
     def pose_callback(self, msg):
         
         std_x = 0.5
