@@ -42,6 +42,7 @@ setup(
             'sensor_model_test = localization.test.sensor_model_test:main',
             'motion_model_test = localization.test.motion_model_test:main',
             'motion_model = localization.motion_model:main',
+            'test_driver = localization.test_driver:main',
         ],
     },
 

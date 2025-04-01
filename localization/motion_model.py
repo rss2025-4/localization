@@ -17,110 +17,91 @@ import rclpy
 
 assert rclpy
 
-# originally not node  
-class MotionModel(Node):
+# originally not node  (added for debugging as a ros node "ros2 run localization motion_model")
+class MotionModel():  #  for unit tests, remove Node superclass
 
-    def __init__(self,node): #originally (self, node)
+    def __init__(self,node): # originally (self, node) - for unit tests, make sure "(self, node)" not "(self)"
         ####################################
         # TODO
-        super().__init__("motion_model") # originally not here
+        # super().__init__("motion_model") # originally not here
+
+        self.debug = False # for visualizing motion model particles
 
         # Do any precomputation for the motion
         # model here.
-        self.deterministic = True # deterministic or non-deterministic
+
+        self.deterministic = False # deterministic or non-deterministic, set to True for unit tests!
+        
         # need to integrate wheel odometry from integration of motor and steering commands
-        self.prev_time = 0
-        self.velocity = 0
-        self.steering_angle = 0
+        self.prev_time = None
+        # self.velocity = 0
+        # self.steering_angle = 0
 
         if self.deterministic is False:
             # self.v_std = 0.1
             self.dx_std = 0.1
-            self.dy_std = 0.2
-            self.theta_std = 0.4
+            self.dy_std = 0.1
+            self.theta_std = 0.1
         else:
-            self.v_std = 0.0
+            # self.v_std = 0.0
             self.dx_std = 0.0
             self.dy_std = 0.0
             self.theta_std = 0.0
         
-        self.particles_pub = self.create_publisher(Marker, "/motion_model_particles", 1)
-        # pass
+        
 
-        self.odom_sub = self.create_subscription(Odometry, "/odom",
+        if self.debug is True:
+            self.particles_pub = self.create_publisher(Marker, "/motion_model_particles", 1)
+
+            self.odom_sub = self.create_subscription(Odometry, "/odom",
                                                  self.odom_callback,
                                                  1)
         
-        initial_particles = np.zeros((100,3))
-        self.particles = initial_particles
+            # self.initial_particles = np.zeros((100,3)) # just initalizing 100 particles at origin (0,0) with heading of 0
+            # self.particles = self.initial_particles
+            self.particles = np.zeros((100,3)) # initial particles at origin [0,0,0]
 
-        self.drive_publisher = self.create_publisher(
-            AckermannDriveStamped, "/drive", 10
-        )
+            self.drive_publisher = self.create_publisher(
+                AckermannDriveStamped, "/drive", 10
+            )
 
-        drive_timer_period = 1 / 60  # seconds, 60 Hz
-        self.drive_timer = self.create_timer(drive_timer_period, self.drive_callback)
+            drive_timer_period = 1 / 60  # seconds, 60 Hz
+            self.drive_timer = self.create_timer(drive_timer_period, self.drive_callback)
         ####################################
 
     ## helper functions
-
-    
 
     def update_odometry(self, x_velocity, y_velocity, angular_velocity, current_time):
         """ Gets velocity odometry from /odom topic - referenced in particle_filter.py 
         and outputs pose transformation odometry from k to k-1 
         
-        also get the previous pose?
-
         odometry is in reference frame of k-1 body frame
 
-        use ackermann model
-
-        x_dot = v*cos(theta)
-        y_dot = v*sin(theta)
-        theta_dot = v/L*tan(delta) where delta is steering angle
-
-        pg 110 of PR book
-
-        need deterministic result and non-determinstic result (with noise)
+        use ackermann model (pg 110 of PR book has other models)
         """
+        print("x_velocity, y_velocity, angular_velocity", x_velocity, y_velocity, angular_velocity)
+        # Calculate the change in pose given the instantaneous velocities
+        if self.prev_time is None:
+            # first instance, so no time difference yet
+            self.prev_time = current_time
+            print("initial")
+            return [0.0, 0.0, 0.0]
 
-        # 1. Calculate the change in pose given the instantaneous velocities
-        # dtheta = np.arctan2()
-        dt = current_time - self.prev_time #should already be in seconds
+        dt = current_time - self.prev_time # should be in seconds
         dx = x_velocity * dt
         dy = y_velocity * dt
         dtheta = angular_velocity * dt
 
-        # also get velocity and steering angle  
-        self.velocity = np.sqrt(x_velocity**2 + y_velocity**2) # also equal to x_velocity/cos(dtheta)?
-        self.steering_angle = dtheta
-        # 2. Use prev pose and current pose to calculate probabilities
-        # x_prev = 0
-        # y_prev = 0
-        # theta_prev = 0
-
-        # using robot state to get odometry form /odom topic
-        # use ackermann model
-        
+        print("dt", dt)
 
         self.prev_time = current_time
         return [dx, dy, dtheta]
     
-    # def odometry_from_odom_motion_model(pose1, pose2):
-    #     # calc odometry info (odometry model, not velocity) from pose1 to pose2
-    #     x,y,theta = pose1
-    #     xp,yp,thetap = pose2
-
-    #     dtrans = np.sqrt((xp-x)**2 + (yp-y)**2)
-    #     drot1 = np.arctan2(yp-y, xp-x) - theta
-    #     drot2 = thetap - theta - drot1
-    #     return [dtrans, drot1, drot2]
-
-    # def noise_from_odom_motion_model(pose1, pose2):
-    #     dtrans, drot1, drot2 = odometry_from_odom_motion_model(pose1, pose2)
-
-    def odometry_from_ackermann_motion_model(self, pose1, velocity, theta, particles):
+    def odometry_from_ackermann_motion_model_vel(self, pose1, velocity, theta, particles):
+        """
+        NOT USED 
+        Old odometry calculation - using velocity (2 params, v and theta)
+        """
         x_prev,y_prev,theta_prev = pose1
 
         # calculate gaussian distribution about velocity and theta
@@ -144,33 +125,28 @@ class MotionModel(Node):
         return pose2
 
     def odometry_from_ackermann_motion_model_pose(self, pose1, odometry, particles):
-        """ 3 params: x,y, theta"""
+        "Calculates new possible poses from odometry with noise (3 params, dx, dy, dtheta)"
+
         x_prev,y_prev,theta_prev = pose1
         dx, dy, dtheta = odometry[0], odometry[1], odometry[2]
     
-        # calculate gaussian distribution about velocity and theta
+        # Calculate gaussian distribution about velocity and theta
         # syntax: np.random.normal(mean, std)
         # v_x = velocity * np.cos(theta)
         # v_y = velocity * np.sin(theta)
-
         dx_distribution = np.random.normal(dx, self.dx_std, len(particles))
         dy_distribution = np.random.normal(dy, self.dy_std, len(particles))
         theta_distribution = np.random.normal(dtheta, self.theta_std, len(particles))
         
-        # calculate a new pose based on sample from distribution (??)
+        # Calculate a new deltaX based on chosen sample from noise distribution
         dx_sample = np.random.choice(dx_distribution)
         dy_sample = np.random.choice(dy_distribution)
         theta_sample = np.random.choice(theta_distribution)
 
-        # calculate new pose with noise-injected odometry
-            # notice theta independent of x,y but not vice versa
-        # x = x_prev + dx_sample
-        # y = y_prev + dy_sample
-        # theta = theta_prev + theta_sample
-
         deltaX = [dx_sample, dy_sample, theta_sample]
-        pose2 = get_new_pose(pose1, deltaX) #[x,y,theta]
-        # possible_x = x_prev + 
+        # print("deltaX", deltaX)
+        # Calculate new pose with noise-injected odometry
+        pose2 = get_new_pose(pose1, deltaX) # outputs [x,y,theta]
 
         return pose2
 
@@ -192,42 +168,27 @@ class MotionModel(Node):
         returns:
             particles: An updated matrix of the
                 same size
-        
-        ///////
-        x_dot = v*cos(theta)
-        y_dot = v*sin(theta)
-        theta_dot = v/L*tan(delta) where delta is steering angle
-
         """
-
-        ####################################
-        # TODO
-        
-        updated_particles = np.zeros((len(particles), 3))
+        # updated_particles = np.zeros((len(particles), 3)) # avoid initializing new arrays for memory-sake
         # print("size", np.size(updated_particles))
 
         for i in range(len(particles)): # for each particles
 
-            # if only deterministic
-            # if self.deterministic:
-            #     updated_particles[i] = get_new_pose(particles[i],odometry)
-           
-            # else: # if non-deterministic
-                # add noise to the odometry
-                # try odometry motion model
-                # updated_particles[i] = self.odometry_from_ackermann_motion_model_pose(particles[i], self.velocity, self.steering_angle, particles)
-            updated_particles[i] = self.odometry_from_ackermann_motion_model_pose(particles[i], odometry, particles)
-                # pass
+            # use a function call to update each particle (? room for efficiency improvement?)
+            particles[i] = self.odometry_from_ackermann_motion_model_pose(particles[i], odometry, particles)
+                    
+        return particles # should probably modify array instead of making new one (okay?)
 
-        return updated_particles
-        # raise NotImplementedError
     def odom_callback(self,msg):
+        # FOR DEBUGGING
         x_velocity = msg.twist.twist.linear.x
         y_velocity = msg.twist.twist.linear.y
         angular_velocity = msg.twist.twist.angular.z
-        current_time = msg.header.stamp.sec
+        current_time = float(msg.header.stamp.nanosec)/1e9
+        print("current time", current_time)
         
         [dx, dy, dtheta] = self.update_odometry(x_velocity, y_velocity, angular_velocity, current_time)
+        print("dx, dy, dtheta", dx, dy, dtheta)
 
         all_points = Marker()
         all_points.type = Marker.POINTS
@@ -241,10 +202,10 @@ class MotionModel(Node):
         all_points.color.g = color[2]
         
         # updated_particles = [[0.0,1.0,0.0],[0.0,2.0,0.0]]#self.motion_model.evaluate()
-        updated_particles = self.evaluate(self.particles,[dx, dy, dtheta])
+        self.particles = self.evaluate(self.particles,[dx, dy, dtheta])
 
-        print("updated particle 1", updated_particles[0])
-        for particle in updated_particles:
+        print("updated particle 1", self.particles[0])
+        for particle in self.particles:
             p = Point()
             p.x = particle[0] #[x,y,theta]
             p.y = particle[1]

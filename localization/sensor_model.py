@@ -258,7 +258,7 @@ class SensorModel:
             # where each d_i is the distance from the particle to the closest obstacle
             # in the direction of the i-th beam
             scan = scans[j, :]  # get scan (some j-th row)
-            node.get_logger().info("in for loop, scan %s" % np.size(scan, 0))
+            # node.get_logger().info("in for loop, scan %s" % np.size(scan, 0))
             total_p_z_k = 1  # initialize a total probability for each particle
             for i in range(num_beams):  # each measured distance z_k_i
                 # use precomputed table to get the probability of each beam
@@ -270,10 +270,14 @@ class SensorModel:
 
                 # likelihood of each particle is a product of the likelihoods of each beam
                 total_p_z_k = total_p_z_k * p_z_k_i
-            node.get_logger().info("made it through beams")
+            # node.get_logger().info("made it through beams")
             particle_probabilites[j, 0] = total_p_z_k
+                
+        node.get_logger().info("sum of particle probabilities %s" % np.sum(particle_probabilites))
+        node.get_logger().info("all particle probabilities %s" % particle_probabilites)
         ####################################
-        node.get_logger().info("size of prob %s" % np.size(particle_probabilites, 0))
+        
+        
         return particle_probabilites
 
     def map_callback(self, map_msg):
