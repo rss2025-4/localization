@@ -223,12 +223,13 @@ class SensorModel:
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle
         node = self.sensor_node
-        scans = self.scan_sim.scan(particles)  # ray tracing from all the particles
+        scans = self.scan_sim.scan(particles) # ray tracing from all the particles
+        
         node.get_logger().info("scan %s" % np.size(scans, 0))
         # convert scan and observation from meters to pixel
         # by dividing by map resolution and scale
         scans = np.floor(
-            scans / (self.resolution * self.lidar_scale_to_map_scale)
+            scans / int(self.resolution * self.lidar_scale_to_map_scale)
         ).astype(int)
         observation = np.floor(
             observation / (self.resolution * self.lidar_scale_to_map_scale)
