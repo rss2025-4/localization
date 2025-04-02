@@ -108,7 +108,7 @@ class ParticleFilter(Node):
         current_time = seconds + nanoseconds * 1e-9
         if current_time - self.laser_callback_prev_time < 1.0/self.laser_callback_freq:
             return
-            
+        pass
         self.laser_callback_prev_time = current_time
         observation = msg.ranges
         self.particle_probabilites = self.sensor_model.evaluate(self.particles, observation)
@@ -127,7 +127,6 @@ class ParticleFilter(Node):
         seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
         current_time = seconds + nanoseconds * 1e-9
 
-        
         odometry = self.motion_model.update_odometry(x_velocity, y_velocity, angular_velocity, current_time)
         self.particles = self.motion_model.evaluate(self.particles, odometry)
         
@@ -137,9 +136,11 @@ class ParticleFilter(Node):
     def resample(self, particle_probabilities, particles):
         if particle_probabilities is None:
             return self.particles
+
         # Create list of options to sample from
         options = np(0,len(particle_probabilities)+1,1)
         selections = np.random.choice(particles, len(particles), p=particle_probabilities)
+        print(particles, selections)
         return self.particles[selections]
        
     def get_pose(self, particles):
@@ -244,7 +245,7 @@ class ParticleFilter(Node):
         std_y = 0.5
         std_theta = 0.25
         
-        x = msg.pose.pose.position.x
+        x = msg.pose.pose.position.x + 1.0 # try initializing forward a bit
         y = msg.pose.pose.position.y
         roll, pitch, yaw = euler_from_quaternion([msg.pose.pose.orientation.x,
                                                     msg.pose.pose.orientation.y,

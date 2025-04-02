@@ -22,7 +22,7 @@ class Driver(Node):
             "drive_topic", "/drive"
         )  # /vesc/low_level/input/navigation #drive
         # self.declare_parameter("side", "default")
-        self.declare_parameter("velocity", 2.0)  # "default"
+        self.declare_parameter("velocity", 1.0)  # "default"
         # self.declare_parameter("desired_distance", "default")
 
         # Fetch constants from the ROS parameter server
@@ -82,7 +82,7 @@ class Driver(Node):
         # assign values
         drive_msg.header.stamp = curr_time.to_msg()
         drive_msg.header.frame_id = "base_link"
-        drive_msg.drive.steering_angle = 0.0  # rad
+        drive_msg.drive.steering_angle = 1.0  # rad
         drive_msg.drive.steering_angle_velocity = 0.0  # rad/s
         drive_msg.drive.speed = self.VELOCITY  # m/s
         drive_msg.drive.acceleration = 0.0  # m/s^2
