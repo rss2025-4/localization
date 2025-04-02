@@ -135,13 +135,29 @@ class ParticleFilter(Node):
     
     def resample(self, particle_probabilities, particles):
         if particle_probabilities is None:
+            self.get_logger().info("NOT resampled")
             return self.particles
 
         # Create list of options to sample from
-        options = np(0,len(particle_probabilities)+1,1)
-        selections = np.random.choice(particles, len(particles), p=particle_probabilities)
-        print(particles, selections)
-        return self.particles[selections]
+        self.get_logger().info("particle_probabilities_size %s" % len(particle_probabilities))
+        self.get_logger().info("particles_size %s" % len(particles))
+        
+        
+        # particle_probabilities = np.nan_to_num(particle_probabilities, nan=0)
+        particle_probabilities = particle_probabilities / np.sum(particle_probabilities)
+        particle_probabilities = np.nan_to_num(particle_probabilities, nan=0)
+
+        options = np.arange(0,len(particle_probabilities),1)
+
+        self.get_logger().info("hi %s" % particle_probabilities)
+
+        if np.sum(particle_probabilities) <= 1.0:
+            return particles
+            
+        selections = np.random.choice(options, len(particles), p=particle_probabilities)
+        
+        self.get_logger().info("resampled")
+        return particles[selections]
        
     def get_pose(self, particles):
         """
