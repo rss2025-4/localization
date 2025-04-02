@@ -236,22 +236,22 @@ class SensorModel:
         ).astype(int)
 
         N = np.size(scans, 0)
-        node.get_logger().info("N %s" % N)
-        node.get_logger().info("converting to pixels scans %s" % np.size(scans, 1))
-        node.get_logger().info(
-            "converting to pixels observation %s" % np.size(observation, 0)
-        )
+        # node.get_logger().info("N %s" % N)
+        # node.get_logger().info("converting to pixels scans %s" % np.size(scans, 1))
+        # node.get_logger().info(
+        #     "converting to pixels observation %s" % np.size(observation, 0)
+        # )
         # then clip to z_max and 0
         num_beams = np.size(observation, 0)
-        node.get_logger().info("num_beams %s" % num_beams)
+        # node.get_logger().info("num_beams %s" % num_beams)
 
         scans = np.clip(scans, 0, self.table_width - 1)
         observation = np.clip(observation, 0, self.table_width - 1)
 
-        node.get_logger().info("clipped to pixels scans %s" % np.size(scans, 1))
-        node.get_logger().info(
-            "clipped to pixels observation %s" % np.size(observation, 0)
-        )
+        # node.get_logger().info("clipped to pixels scans %s" % np.size(scans, 1))
+        # node.get_logger().info(
+        #     "clipped to pixels observation %s" % np.size(observation, 0)
+        # )
 
         particle_probabilites = np.zeros((len(particles), 1))
         for j in range(N):
@@ -274,8 +274,8 @@ class SensorModel:
             # node.get_logger().info("made it through beams")
             particle_probabilites[j, 0] = total_p_z_k
                 
-        node.get_logger().info("sum of particle probabilities %s" % np.sum(particle_probabilites))
-        node.get_logger().info("all particle probabilities %s" % particle_probabilites)
+        # node.get_logger().info("sum of particle probabilities %s" % np.sum(particle_probabilites))
+        # node.get_logger().info("all particle probabilities %s" % particle_probabilites)
         ####################################
         
         
