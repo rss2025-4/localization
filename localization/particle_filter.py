@@ -247,7 +247,7 @@ class ParticleFilter(Node):
         particle_pts.scale.x = 0.1
         particle_pts.scale.y = 0.1
         particle_pts.color.a = 1.
-        particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 1.0, 0.69, 0.651
+        particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 0.482, 0.431, 0.922
         
         for particle in self.particles:
             p = Point()
