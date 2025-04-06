@@ -7,6 +7,7 @@ python = ">=3.10, <3.11"
 
 # liblocalization = { path = "/home/alan/6.4200/liblocalization", develop = true }
 liblocalization = { git = "https://github.com/rss2025-4/liblocalization.git" }
+better-exceptions = "^0.3.3"
 
 
 [tool.isort]

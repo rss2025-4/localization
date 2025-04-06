@@ -48,6 +48,21 @@ test-tox = ["click", "equinox ; sys_platform == \"linux\"", "jax[cpu] ; sys_plat
 test-tox-coverage = ["coverage (>=5.5)"]
 
 [[package]]
+name = "better-exceptions"
+version = "0.3.3"
+description = "Pretty and helpful exceptions, automatically"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "better_exceptions-0.3.3-py3-none-any.whl", hash = "sha256:9c70b1c61d5a179b84cd2c9d62c3324b667d74286207343645ed4306fdaad976"},
+    {file = "better_exceptions-0.3.3.tar.gz", hash = "sha256:e4e6bc18444d5f04e6e894b10381e5e921d3d544240418162c7db57e9eb3453b"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "sys_platform == \"win32\""}
+
+[[package]]
 name = "cffi"
 version = "1.17.1"
 description = "Foreign Function Interface for Python calling C code."
@@ -1923,4 +1938,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10, <3.11"
-content-hash = "e8eb3764b72e058701a09642c1770837112742e29719e31b9c32f0f07b3d9804"
+content-hash = "cbbb2f8ad635e3cba2ae8c0b78fc0223004f07050e4c9973c353554744885fac"
