@@ -140,6 +140,7 @@ class ExampleSimNode(Node):
                 n_laser_points=1081, #added for real racecar
                 map_frame = 'map',
                 marker_callback=self.marker_callback,
+                use_motion_model=False,
                 ground_truth_callback=self.ground_truth_callback,
             )
         )
@@ -182,7 +183,7 @@ class ExampleSimNode(Node):
             msg.header.frame_id = "map" # cause needs to be map
             msg.twist.twist.linear.x = -msg.twist.twist.linear.x
             msg.twist.twist.linear.y = -msg.twist.twist.linear.y
-            msg.twist.twist.angular.z = -msg.twist.twist.angular.z
+            msg.twist.twist.angular.z = msg.twist.twist.angular.z
 
             assert msg.child_frame_id == "base_link"
             odom = Odometry(header=msg.header, child_frame_id="laser")
@@ -238,7 +239,7 @@ class ExampleSimNode(Node):
     def publish_estimated_pose(self):
         if controller := self.get_controller():
             transform_msg = controller.get_pose()
-            transform_msg.child_frame_id = "base_link_pf"
+            transform_msg.child_frame_id = "base_link"
             # print("pose", transform_msg)
             x_avg = transform_msg.transform.translation.x
             y_avg = transform_msg.transform.translation.y
@@ -265,7 +266,7 @@ class ExampleSimNode(Node):
     
     def assign_lidar_ranges(self, scan_msg: LaserScan):
         try:
-            t = self.tfBuffer.lookup_transform("map", "laser", Time())
+            t = self.tfBuffer.lookup_transform("map", "laser", Time()) #on racecar, laser_model
         except Exception as e:
             print("failed to get transform:", e)
             return None
@@ -296,20 +297,21 @@ class ExampleSimNode(Node):
         self.actual_x = pose_range_map[:, 0]
         self.actual_y = pose_range_map[:, 1]
     def assign_estimated_lidar_ranges(self, scan_ranges, particle):
-        try:
-            t = self.tfBuffer.lookup_transform("map", "laser", Time())
-        except Exception as e:
-            print("failed to get transform:", e)
-            return None
+        # try:
+        #     t = self.tfBuffer.lookup_transform("map", "laser", Time())
+        # except Exception as e:
+        #     print("failed to get transform:", e)
+        #     return None
 
-        # Transformation from laser frame to map frame
-        pose_laser_map = [t.transform.translation.x, t.transform.translation.y, t.transform.rotation.z]
+        # # Transformation from laser frame to map frame
+        # pose_laser_map = [t.transform.translation.x, t.transform.translation.y, t.transform.rotation.z]
         
-        print("lidar pose", pose_laser_map)
-        poses_laser_map = np.vstack([pose_laser_map] * len(scan_ranges))
-        # poses_laser_map = np.vstack([particle] * len(scan_ranges)) # estimated particle is of laser to map
+        # print("lidar pose", pose_laser_map)
+        # poses_laser_map = np.vstack([pose_laser_map] * len(scan_ranges))
+        poses_laser_map = np.vstack([particle] * len(scan_ranges)) # estimated particle is of laser to map
         # print("pose_laser_map", poses_laser_map)
         print("shape", np.shape(scan_ranges))
+        
         # 0. Get scan_msg data
         ranges = scan_ranges.ravel() #np.array(scan_ranges, dtype="float32")  
         angle_min = 0 - self.scan_field_of_view / 2.0 #scan_msg.angle_min 
