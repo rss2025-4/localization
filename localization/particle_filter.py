@@ -43,7 +43,7 @@ class ParticleFilter(Node):
         
         self.NUM_PARTICLES = 200
 
-        self.laser_callback_freq = 20 #Hz
+        self.laser_callback_freq = 50 #Hz
         self.laser_callback_prev_time = 0.0
 
         self.laser_sub = self.create_subscription(LaserScan, scan_topic,
@@ -103,6 +103,8 @@ class ParticleFilter(Node):
 
        
     def laser_callback(self, msg):
+        # return
+
         current_time_msg = self.get_clock().now()
         seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
         current_time = seconds + nanoseconds * 1e-9
@@ -119,7 +121,7 @@ class ParticleFilter(Node):
         self.get_logger().info("laser callback")
 
     def odom_callback(self, msg):
-        # pass
+        
         x_velocity = msg.twist.twist.linear.x
         y_velocity = msg.twist.twist.linear.y
         angular_velocity = msg.twist.twist.angular.z
@@ -212,7 +214,7 @@ class ParticleFilter(Node):
 
 
         t.header.frame_id = 'map'
-        t.child_frame_id = 'base_link_pf'
+        t.child_frame_id = self.particle_filter_frame
 
         # Turtle only exists in 2D, thus we get x and y translation
         # coordinates from the message and set the z coordinate to 0
@@ -261,7 +263,7 @@ class ParticleFilter(Node):
         std_y = 0.5
         std_theta = 0.25
         
-        x = msg.pose.pose.position.x + 1.0 # try initializing forward a bit
+        x = msg.pose.pose.position.x # try initializing forward a bit
         y = msg.pose.pose.position.y
         roll, pitch, yaw = euler_from_quaternion([msg.pose.pose.orientation.x,
                                                     msg.pose.pose.orientation.y,

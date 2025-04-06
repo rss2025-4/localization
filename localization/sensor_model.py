@@ -223,7 +223,7 @@ class SensorModel:
         # to perform ray tracing from all the particles.
         # This produces a matrix of size N x num_beams_per_particle
         node = self.sensor_node
-        scans = self.scan_sim.scan(np.ascontiguousarray(particles)) # ray tracing from all the particles
+        scans = self.scan_sim.scan(np.ascontiguousarray(particles)) # np.ascontiguousarray( ray tracing from all the particles
         
         node.get_logger().info("scan %s" % np.size(scans, 0))
         
@@ -249,39 +249,58 @@ class SensorModel:
         scans = np.clip(scans, 0, self.table_width - 1)
         observation = np.clip(observation, 0, self.table_width - 1)
 
+        step_size = num_beams // self.num_beams_per_particle  # Calculate step size for even sampling
+
+        # Select a subset of beams using even sampling
+        downsampled_observation = observation[::step_size]
+
         # node.get_logger().info("clipped to pixels scans %s" % np.size(scans, 1))
         # node.get_logger().info(
         #     "clipped to pixels observation %s" % np.size(observation, 0)
         # )
+        node.get_logger().info(
+            "downsampled observation %s" % np.size(downsampled_observation, 0)
+        )
 
         particle_probabilites = np.zeros((len(particles), 1))
-        for j in range(N):
-            # scan is a list of the form [d1, d2, d3, ...]
-            # where each d_i is the distance from the particle to the closest obstacle
-            # in the direction of the i-th beam
-            scan = scans[j, :]  # get scan (some j-th row)
-            # node.get_logger().info("in for loop, scan %s" % np.size(scan, 0))
-            total_p_z_k = 1  # initialize a total probability for each particle
-            for i in range(num_beams):  # each measured distance z_k_i
-                # use precomputed table to get the probability of each beam
-                # given the distance from the map
-                # and the distance from the laser scan
-                z_k_i = observation[i]
-                d_i = scan[i]
-                p_z_k_i = self.sensor_model_table[z_k_i, d_i]
+        # for j in range(N):
+        #     # scan is a list of the form [d1, d2, d3, ...]
+        #     # where each d_i is the distance from the particle to the closest obstacle
+        #     # in the direction of the i-th beam
+        #     scan = scans[j, :]  # get scan (some j-th row)
+        #     # node.get_logger().info("in for loop, scan %s" % np.size(scan, 0))
+        #     total_p_z_k = 1  # initialize a total probability for each particle
+        #     for i in range(self.num_beams_per_particle):  # each measured distance z_k_i
+        #         # use precomputed table to get the probability of each beam
+        #         # given the distance from the map
+        #         # and the distance from the laser scan
+        #         z_k_i = downsampled_observation[i]
+        #         d_i = scan[i]
+        #         p_z_k_i = self.sensor_model_table[z_k_i, d_i]
 
-                # likelihood of each particle is a product of the likelihoods of each beam
-                total_p_z_k = total_p_z_k * p_z_k_i
-            # node.get_logger().info("made it through beams")
+        #         # likelihood of each particle is a product of the likelihoods of each beam
+        #         total_p_z_k = total_p_z_k * p_z_k_i
+        #     # node.get_logger().info("made it through beams")
+        #     particle_probabilites[j, 0] = total_p_z_k
+
+        # Assuming scans is a NumPy array, so scans[j, :] and downsampled_observation are NumPy arrays.
+        for j in range(N):
+            scan = scans[j, :]  # get scan (some j-th row)
+            
+            # Efficiently compute the total probability using vectorized operations.
+            total_p_z_k = np.prod([self.sensor_model_table[downsampled_observation[i], scan[i]] 
+                                for i in range(self.num_beams_per_particle)])
+            
+            # Store the computed probability for the particle
             particle_probabilites[j, 0] = total_p_z_k
+
                 
         # node.get_logger().info("sum of particle probabilities %s" % np.sum(particle_probabilites))
         # node.get_logger().info("all particle probabilities %s" % particle_probabilites)
         ####################################
         
         
-        return particle_probabilites.flatten()
-
+        return particle_probabilites.flatten() #[:, 0]
     def map_callback(self, map_msg):
         # Convert the map to a numpy array
         self.map = np.array(map_msg.data, np.double) / 100.0
