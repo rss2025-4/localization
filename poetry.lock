@@ -687,7 +687,7 @@ develop = false
 
 [package.dependencies]
 jax = "^0.5.3"
-liblocalization-cpp = {path = "cpp"}
+liblocalization-cpp = {git = "https://github.com/rss2025-4/liblocalization.git", subdirectory = "cpp"}
 libracecar = {git = "https://github.com/rss2025-4/libracecar.git"}
 odom-transformer = {git = "https://github.com/Alan-Chen99/odom_transformer.git"}
 rosbags = "^0.10.9"
@@ -696,7 +696,7 @@ rosbags = "^0.10.9"
 type = "git"
 url = "https://github.com/rss2025-4/liblocalization.git"
 reference = "HEAD"
-resolved_reference = "a12fc7123202e21381184fe8b3046a3a998a7397"
+resolved_reference = "5b97f92dc8ee67250411d7dc4b014401091ee7d9"
 
 [[package]]
 name = "liblocalization-cpp"
@@ -709,8 +709,11 @@ files = []
 develop = false
 
 [package.source]
-type = "directory"
-url = "../../../dockeruser/.cache/pypoetry/virtualenvs/-Rg2Na--4-py3.10/src/liblocalization/cpp"
+type = "git"
+url = "https://github.com/rss2025-4/liblocalization.git"
+reference = "HEAD"
+resolved_reference = "afbedab802bbd9d7941fc3f54495648eb69c0327"
+subdirectory = "cpp"
 
 [[package]]
 name = "libracecar"
