@@ -50,6 +50,8 @@ class ErrorPlotter(Node):
             pos = trans.transform.translation
             # Assuming ground truth orientation is not used here.
             self.ground_truth_pose = np.array([pos.x, pos.y])
+            self.get_logger().info(f'Could not get ground truth: {self.ground_truth_pose}')
+            
         except Exception as e:
             self.get_logger().info(f'Could not get ground truth transform: {e}')
             return

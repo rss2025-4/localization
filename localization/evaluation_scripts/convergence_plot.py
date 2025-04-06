@@ -13,6 +13,7 @@ class ConvergencePlotter(Node):
         self.times = []           # Relative times (in seconds) of each /particle_estimate message.
         self.std_xs = []          # Standard deviation of x values for each /particle_estimate message.
         self.std_ys = []          # Standard deviation of y values for each /particle_estimate message.
+        self.std_thetas = []
         self.initial_received = False
 
         # Subscribe to the initial particle topic (/particle)
@@ -30,8 +31,10 @@ class ConvergencePlotter(Node):
             self.initial_received = True
             xs = [p.x for p in msg.points]
             ys = [p.y for p in msg.points]
+            thetas = [p.z for p in msg.points]
             std_x = np.std(xs)
             std_y = np.std(ys)
+            std_theta = np.std(thetas)
             self.get_logger().info(f'Initial /particle message received: std_x = {std_x:.3f}, std_y = {std_y:.3f}')
         else:
             self.get_logger().info('Ignoring additional /particle messages.')
@@ -47,8 +50,14 @@ class ConvergencePlotter(Node):
             self.initial_received = True
             xs = [p.x for p in msg.points]
             ys = [p.y for p in msg.points]
+            thetas = [p.z for p in msg.points]
             std_x = np.std(xs)
             std_y = np.std(ys)
+            std_theta = np.std(thetas)
+            
+            self.std_xs.append(std_x)
+            self.std_ys.append(std_y)
+            self.std_thetas.append(std_theta)
             self.get_logger().info(f'Initial /particle message received: std_x = {std_x:.3f}, std_y = {std_y:.3f}')
             return
         sec, nsec = self.get_clock().now().seconds_nanoseconds()
@@ -58,9 +67,11 @@ class ConvergencePlotter(Node):
         ys = [p.y for p in msg.points]
         std_x = np.std(xs)
         std_y = np.std(ys)
+        std_theta = np.std([p.z for p in msg.points])
         self.times.append(rel_time)
         self.std_xs.append(std_x)
         self.std_ys.append(std_y)
+        self.std_thetas.append(std_theta)
         self.get_logger().info(f'Time: {rel_time}s | std_x: {std_x:.3f} | std_y: {std_y:.3f}')
         # HACK to stop the node after 5 seconds
         if rel_time > 5:
@@ -92,7 +103,7 @@ def main(args=None):
             
             ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'{int(x)}'))
 
-            plt.savefig("convergence_plot.png")
+            plt.savefig("convergence_plot_sim.png")
         else:
             print("No /particle_estimate messages were received to plot.")
 
