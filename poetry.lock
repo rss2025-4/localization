@@ -711,7 +711,7 @@ rosbags = "^0.10.9"
 type = "git"
 url = "https://github.com/rss2025-4/liblocalization.git"
 reference = "HEAD"
-resolved_reference = "5b97f92dc8ee67250411d7dc4b014401091ee7d9"
+resolved_reference = "466d6d7de657a31e79fb75653a4c8fc9a7ff60ee"
 
 [[package]]
 name = "liblocalization-cpp"
