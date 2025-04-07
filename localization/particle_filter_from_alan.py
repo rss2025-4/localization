@@ -3,7 +3,6 @@ from typing import Callable
 import matplotlib.pyplot as plt
 import numpy as np
 import tf2_ros
-from helpers import PoseTransformTools
 from liblocalization import deterministic_motion_tracker
 from liblocalization.api import LocalizationBase, localization_params
 from liblocalization.controllers.particles import particles_model, particles_params
@@ -21,6 +20,8 @@ from tf2_ros import (
 )
 from tf_transformations import euler_from_quaternion
 from visualization_msgs.msg import Marker
+
+from localization.helpers import PoseTransformTools
 
 # from .api_alan import LocalizationBase, localization_params
 
@@ -73,8 +74,6 @@ class ExampleSimNode(Node):
 
         self.visualization_pub = self.create_publisher(Marker, "/visualization", 10)
 
-        self.did_set_pose = False
-
         # Added for plotting laser scan
 
         self.actual_x = []
@@ -97,25 +96,27 @@ class ExampleSimNode(Node):
             self.scan_theta_discretization,
         )
 
+        self.odom_transformer = None
+
     def get_controller(self) -> LocalizationBase | None:
         if self.controller is None:
             return None
-        if not self.did_set_pose:
+        if self.odom_transformer is None:
             try:
-                t = self.tfBuffer.lookup_transform("map", "laser", Time())
+                self.odom_transformer = Transformer(
+                    self.tfBuffer.lookup_transform(
+                        "laser", "base_link", Time()
+                    ).transform
+                )
             except Exception as e:
                 print("failed to get transform:", e)
                 return
-            self.odom_transformer = Transformer(
-                self.tfBuffer.lookup_transform("laser", "base_link", Time()).transform
-            )
-            self.controller.set_pose(t)
-            self.did_set_pose = True
 
         return self.controller
 
     def pose_callback(self, msg: PoseWithCovarianceStamped):
-        if self.controller is not None:
+        if controller := self.get_controller():
+            assert self.odom_transformer is not None
             pos_laser = self.odom_transformer.transform_pose(msg.pose)
 
             t = TransformStamped()
@@ -127,7 +128,9 @@ class ExampleSimNode(Node):
             t.transform.translation.y = pos.y
             t.transform.translation.z = pos.z
 
-            self.controller.set_pose(t)
+            t.transform.rotation = pos_laser.pose.orientation
+
+            controller.set_pose(t)
 
     def map_callback(self, map_msg: OccupancyGrid):
         self.controller = self.controller_init(
@@ -136,7 +139,6 @@ class ExampleSimNode(Node):
                 n_laser_points=1081,  # added for real racecar
                 map_frame="map",
                 marker_callback=self.marker_callback,
-                use_motion_model=False,
                 ground_truth_callback=self.ground_truth_callback,
             )
         )
@@ -174,12 +176,14 @@ class ExampleSimNode(Node):
 
     def odom_callback(self, msg: Odometry):
         if controller := self.get_controller():
+            assert self.odom_transformer is not None
 
             # for real racecar, need to negate?
             msg.header.frame_id = "map"  # cause needs to be map
+
+            assert msg.twist.twist.linear.y == 0.0
             msg.twist.twist.linear.x = -msg.twist.twist.linear.x
-            msg.twist.twist.linear.y = -msg.twist.twist.linear.y
-            msg.twist.twist.angular.z = msg.twist.twist.angular.z
+            msg.twist.twist.angular.z = -msg.twist.twist.angular.z
 
             assert msg.child_frame_id == "base_link"
             odom = Odometry(header=msg.header, child_frame_id="laser")
@@ -200,29 +204,30 @@ class ExampleSimNode(Node):
             self.publish_estimated_pose()
 
     def check_duration(self):
+        pass
 
-        if (self.get_clock().now() - self.initial_time).nanoseconds * 1e-9 > 40.0:
-            print(" in duration check")
-            plt.plot(self.actual_x, self.actual_y, "ro")
+        # if (self.get_clock().now() - self.initial_time).nanoseconds * 1e-9 > 40.0:
+        #     print(" in duration check")
+        #     plt.plot(self.actual_x, self.actual_y, "ro")
 
-            particle = np.array(self.estimated_pose).reshape(-1, 3)
-            # particle = np.array([0.0,0.0,0.0]).reshape(-1,3)
-            print("particle", particle)
-            scan_from_particle = self.scan_sim.scan(particle)
-            print("scan_from_particle", scan_from_particle)
-            self.assign_estimated_lidar_ranges(scan_from_particle, particle)
-            # print(self.estimated_x, self.estimated_y)
-            plt.plot(self.estimated_x, self.estimated_y, "bo")
-            plt.savefig(f"laser_scan_3.png")
-            plt.close()
-            print("finished plotting")
-            rclpy.shutdown()
-            print("closed node")
-        else:
-            print(
-                "not time yet: ",
-                (self.get_clock().now() - self.initial_time).nanoseconds * 1e-9,
-            )
+        #     particle = np.array(self.estimated_pose).reshape(-1, 3)
+        #     # particle = np.array([0.0,0.0,0.0]).reshape(-1,3)
+        #     print("particle", particle)
+        #     scan_from_particle = self.scan_sim.scan(particle)
+        #     print("scan_from_particle", scan_from_particle)
+        #     self.assign_estimated_lidar_ranges(scan_from_particle, particle)
+        #     # print(self.estimated_x, self.estimated_y)
+        #     plt.plot(self.estimated_x, self.estimated_y, "bo")
+        #     plt.savefig(f"laser_scan_3.png")
+        #     plt.close()
+        #     print("finished plotting")
+        #     rclpy.shutdown()
+        #     print("closed node")
+        # else:
+        #     print(
+        #         "not time yet: ",
+        #         (self.get_clock().now() - self.initial_time).nanoseconds * 1e-9,
+        #     )
 
     def marker_callback(self, marker: Marker):
         self.visualization_pub.publish(marker)

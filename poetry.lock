@@ -711,7 +711,7 @@ rosbags = "^0.10.9"
 type = "git"
 url = "https://github.com/rss2025-4/liblocalization.git"
 reference = "HEAD"
-resolved_reference = "466d6d7de657a31e79fb75653a4c8fc9a7ff60ee"
+resolved_reference = "aa8a29cd44700ed51dfa0bfdee7dc70159c69ddb"
 
 [[package]]
 name = "liblocalization-cpp"
@@ -732,7 +732,7 @@ subdirectory = "cpp"
 
 [[package]]
 name = "libracecar"
-version = "0.0.1"
+version = "0.0.2"
 description = ""
 optional = false
 python-versions = ">=3.10, <3.13"
@@ -742,6 +742,7 @@ develop = false
 
 [package.dependencies]
 beartype = "^0.20.0"
+better-exceptions = "^0.3.3"
 colorama = "^0.4.6"
 equinox = "^0.11.12"
 ipython = "^8"
@@ -764,7 +765,7 @@ unshare = "^0.22"
 type = "git"
 url = "https://github.com/rss2025-4/libracecar.git"
 reference = "HEAD"
-resolved_reference = "c44814d608153f35af8ab226502fa3b6ac7c6992"
+resolved_reference = "93416fa21eeb58c5ad09966cbf2a0eb0607fe82b"
 
 [[package]]
 name = "lz4"
