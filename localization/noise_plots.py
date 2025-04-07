@@ -12,8 +12,8 @@ class NoisyOdomNode(Node):
         super().__init__('noisy_odom')
         
         # Parameters for noise levels
-        self.declare_parameter('linear_velocity_noise_std', 0.1)  # m/s
-        self.declare_parameter('angular_velocity_noise_std', 0.1)  # rad/s
+        self.declare_parameter('linear_velocity_noise_std', 0.01)  # m/s
+        self.declare_parameter('angular_velocity_noise_std', 0.01)  # rad/s
         
         # Get noise parameters
         self.linear_noise_std = self.get_parameter('linear_velocity_noise_std').value
@@ -51,7 +51,7 @@ class NoisyOdomNode(Node):
 
     def check_duration(self):
         if self.started:
-            if (self.get_current_time() - self.start_time) > 10.0:
+            if (self.get_current_time() - self.start_time) > 20.0:
                 # Plot final results
                 if len(self.pose_errors) > 0:
                     self.plot_errors()

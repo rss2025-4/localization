@@ -75,7 +75,7 @@ class ConvergencePlotter(Node):
         self.std_thetas.append(std_theta)
         self.get_logger().info(f'Time: {rel_time}s | std_x: {std_x:.3f} | std_y: {std_y:.3f}')
         # HACK to stop the node after 10 seconds
-        if rel_time > 5:
+        if rel_time > 10:
             self.get_logger().info('Stopping data collection after 10 seconds.')
             raise KeyboardInterrupt
 
@@ -106,7 +106,7 @@ def main(args=None):
                 
                 ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'{int(x)}'))
 
-                plt.savefig("convergence_plot_sim_noisy_0.1_0.1.png")
+                plt.savefig("convergence_plot_sim_noisy_0.01_0.01_10.png")
             else:
                 print("No /particle_estimate messages were received to plot.")
         except Exception as e:
