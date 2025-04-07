@@ -79,7 +79,7 @@ class ParticleFilter(Node):
         #     odometry you publish here should be with respect to the
         #     "/map" frame.
 
-        self.odom_pub = self.create_publisher(Odometry, "/pf/pose/odom", 1)
+        self.odom_pub = self.create_publisher(Odometry, "/ur_mom", 1)
         # Initialize the models
         self.motion_model = MotionModel(self)
         self.sensor_model = SensorModel(self)
@@ -98,8 +98,8 @@ class ParticleFilter(Node):
     
         # from eghosa's code: 
         self.particles = np.zeros((self.NUM_PARTICLES, 3))
-        self.particle_publisher = self.create_publisher(Marker, "/particle", 1)
-        self.particle_estimate_publisher = self.create_publisher(Marker, "/particle_estimate", 1)
+        self.particle_publisher = self.create_publisher(Marker, "/p", 1)
+        self.particle_estimate_publisher = self.create_publisher(Marker, "/ppp", 1)
         
         # Publish a transformation frame between the map
         # and the particle_filter_frame.

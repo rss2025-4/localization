@@ -58,6 +58,7 @@ class ConvergencePlotter(Node):
             self.std_xs.append(std_x)
             self.std_ys.append(std_y)
             self.std_thetas.append(std_theta)
+            self.times.append(0)
             self.get_logger().info(f'Initial /particle message received: std_x = {std_x:.3f}, std_y = {std_y:.3f}')
             return
         sec, nsec = self.get_clock().now().seconds_nanoseconds()
@@ -73,9 +74,9 @@ class ConvergencePlotter(Node):
         self.std_ys.append(std_y)
         self.std_thetas.append(std_theta)
         self.get_logger().info(f'Time: {rel_time}s | std_x: {std_x:.3f} | std_y: {std_y:.3f}')
-        # HACK to stop the node after 5 seconds
+        # HACK to stop the node after 10 seconds
         if rel_time > 5:
-            self.get_logger().info('Stopping data collection after 5 seconds.')
+            self.get_logger().info('Stopping data collection after 10 seconds.')
             raise KeyboardInterrupt
 
 def main(args=None):
@@ -91,21 +92,26 @@ def main(args=None):
         rclpy.shutdown()
 
         # Plot the convergence data after shutdown
-        if plotter.times:
-            fig, ax = plt.subplots()
-            ax.plot(plotter.times, plotter.std_xs, label='Standard Deviation of X')
-            ax.plot(plotter.times, plotter.std_ys, label='Standard Deviation of Y')
-            ax.set_xlabel('Time (s) since initial /particle')
-            ax.set_ylabel('Standard Deviation')
-            ax.set_title('Convergence Plot of Particle Filter')
-            ax.legend()
-            ax.grid(True)
-            
-            ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'{int(x)}'))
+        try:
+            if plotter.times:
+                fig, ax = plt.subplots()
+                ax.plot(plotter.times, plotter.std_xs, label='Standard Deviation of X')
+                ax.plot(plotter.times, plotter.std_ys, label='Standard Deviation of Y')
+                ax.plot(plotter.times, plotter.std_thetas, label='Standard Deviation of Theta')
+                ax.set_xlabel('Time (s) since initial /particle')
+                ax.set_ylabel('Standard Deviation')
+                ax.set_title('Convergence Plot of Particle Filter')
+                ax.legend()
+                ax.grid(True)
+                
+                ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, pos: f'{int(x)}'))
 
-            plt.savefig("convergence_plot_sim.png")
-        else:
-            print("No /particle_estimate messages were received to plot.")
+                plt.savefig("convergence_plot_sim_noisy_0.1_0.1.png")
+            else:
+                print("No /particle_estimate messages were received to plot.")
+        except Exception as e:
+            print(f"Error during plotting: {e}")
+            print(f"these are the std xs {plotter.std_xs} and std ys {plotter.std_ys} and std thetas {plotter.std_thetas}")
 
 if __name__ == '__main__':
     main()

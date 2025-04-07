@@ -17,6 +17,8 @@ from visualization_msgs.msg import Marker
 from liblocalization import deterministic_motion_tracker
 from liblocalization.api import LocalizationBase, localization_params
 from liblocalization.controllers.particles import particles_model, particles_params
+from geometry_msgs.msg import Point
+
 
 
 class ExampleSimNode(Node):
@@ -35,7 +37,7 @@ class ExampleSimNode(Node):
             OccupancyGrid, "map", self.map_callback, 1
         )
         self.odom_sub = self.create_subscription(
-            Odometry, "/odom", self.odom_callback, 1
+            Odometry, "/noisy_odom", self.odom_callback, 1
         )
         self.lidar_sub = self.create_subscription(
             LaserScan, "/scan", self.lidar_callback, 1
@@ -43,11 +45,13 @@ class ExampleSimNode(Node):
         self.pose_sub = self.create_subscription(
             PoseWithCovarianceStamped, "/initialpose", self.pose_callback, 1
         )
-        
+        # self.pose_estimate_sub = self.create_subscription(Odometry, "/pf/pose/odom",
+        #                                          self.pose_estimate_callback,
+        #                                          1)        
         self.particle_estimate_publisher = self.create_publisher(Marker, "/particle_estimate", 1)
 
         self.visualization_pub = self.create_publisher(Marker, "/visualization", 10)
-
+        self.debug = False
         self.did_set_pose = False
     def pose_estimate_callback(self, particles):
         """
@@ -64,9 +68,13 @@ class ExampleSimNode(Node):
         particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 0.482, 0.431, 0.922
         
         for particle in particles:
+            if self.debug:
+                print("particle", particle)
+                print("particle x", particle[0])
             p = Point()
-            p.x = particle[0]
-            p.y = particle[1]
+            p.x = float(particle[0])
+            p.y = float(particle[1])
+            p.z = float(particle[2])
             particle_pts.points.append(p)
         self.particle_estimate_publisher.publish(particle_pts)
         self.get_logger().info("published particle estimate")
@@ -131,6 +139,8 @@ class ExampleSimNode(Node):
             odom.twist = self.odom_transformer.transform_twist(msg.twist)
 
             controller.odom_callback(odom)
+            particles = controller.get_particles()
+            self.pose_estimate_callback(particles)
             # print("pose:", controller.get_pose())
             # print("particles:", controller.get_particles())
 
