@@ -83,7 +83,8 @@ class ExampleSimNode(Node):
         self.estimated_y = []
 
         self.initial_time = self.get_clock().now()
-        # self.create_timer(0.1, self.check_duration)
+        self.timer_length = 60.0
+        self.create_timer(0.1, self.check_duration)
 
         self.estimated_pose = None
 
@@ -148,7 +149,12 @@ class ExampleSimNode(Node):
         # Convert the map to a numpy array
         self.map = np.array(map_msg.data, np.double) / 100.0
         self.map = np.clip(self.map, 0, 1)
-
+        print("map", self.map)  
+        # Reshape the map to the correct size
+        self.map_to_plot = np.reshape(
+            self.map, (map_msg.info.height, map_msg.info.width)
+        )  # (map_msg.info.height, map_msg.info.width)
+        print("map_to_plot", self.map_to_plot)
         self.resolution = map_msg.info.resolution
 
         # Convert the origin to a tuple
@@ -204,30 +210,47 @@ class ExampleSimNode(Node):
             self.publish_estimated_pose()
 
     def check_duration(self):
-        pass
+        # pass
 
-        # if (self.get_clock().now() - self.initial_time).nanoseconds * 1e-9 > 40.0:
-        #     print(" in duration check")
-        #     plt.plot(self.actual_x, self.actual_y, "ro")
-
-        #     particle = np.array(self.estimated_pose).reshape(-1, 3)
-        #     # particle = np.array([0.0,0.0,0.0]).reshape(-1,3)
-        #     print("particle", particle)
-        #     scan_from_particle = self.scan_sim.scan(particle)
-        #     print("scan_from_particle", scan_from_particle)
-        #     self.assign_estimated_lidar_ranges(scan_from_particle, particle)
-        #     # print(self.estimated_x, self.estimated_y)
-        #     plt.plot(self.estimated_x, self.estimated_y, "bo")
-        #     plt.savefig(f"laser_scan_3.png")
-        #     plt.close()
-        #     print("finished plotting")
-        #     rclpy.shutdown()
-        #     print("closed node")
-        # else:
-        #     print(
-        #         "not time yet: ",
-        #         (self.get_clock().now() - self.initial_time).nanoseconds * 1e-9,
-        #     )
+        if (self.get_clock().now() - self.initial_time).nanoseconds * 1e-9 > self.timer_length:
+            print(" in duration check")
+            plt.plot(self.actual_x, self.actual_y, "go", linewidth=2, markersize=6)
+            
+            particle = np.array(self.estimated_pose).reshape(-1, 3)
+            # particle = np.array([0.0,0.0,0.0]).reshape(-1,3)
+            print("particle", particle)
+            scan_from_particle = self.scan_sim.scan(particle)
+            print("scan_from_particle", scan_from_particle)
+            self.assign_estimated_lidar_ranges(scan_from_particle, particle)
+            # print(self.estimated_x, self.estimated_y)
+            plt.plot(self.estimated_x, self.estimated_y, "bo", linewidth=2, markersize=6)
+            plt.legend(
+                ["Actual Scan", "Estimated Scan"],)
+            plt.xlabel("Map X Position (m)")
+            plt.ylabel("Map Y Position (m)")
+            plt.title("Laser Scan Comparison on Racecar")
+            # plot point of particle and arrow for direction
+            plt.quiver(
+                particle[0][0],
+                particle[0][1],
+                np.cos(particle[0][2]),
+                np.sin(particle[0][2]),
+                angles="xy",
+                scale_units="xy",
+                scale=20,
+                color="black",
+                label="particle direction",
+            )
+            plt.savefig(f"laser_scan_red_circle_down_2.png")
+            plt.close()
+            print("finished plotting")
+            rclpy.shutdown()
+            print("closed node")
+        else:
+            print(
+                "not time yet: ",
+                (self.get_clock().now() - self.initial_time).nanoseconds * 1e-9,
+            )
 
     def marker_callback(self, marker: Marker):
         self.visualization_pub.publish(marker)
@@ -272,27 +295,31 @@ class ExampleSimNode(Node):
             raise Exception("Controller not initialized")
 
     def assign_lidar_ranges(self, scan_msg: LaserScan):
-        try:
-            t = self.tfBuffer.lookup_transform(
-                "map", "laser", Time()
-            )  # on racecar, laser_model
-        except Exception as e:
-            print("failed to get transform:", e)
-            return None
-        # transform all laser points from laser frame to map frame
-        pose_laser_map = [
-            t.transform.translation.x,
-            t.transform.translation.y,
-            t.transform.rotation.z,
-        ]
+        # try:
+        #     t = self.tfBuffer.lookup_transform(
+        #         "map", "base_link", Time()
+        #     )  # on racecar, laser_model
+        # except Exception as e:
+        #     print("failed to get transform:", e)
+        #     return None
+        # # transform all laser points from laser frame to map frame
+        # pose_laser_map = [
+        #     t.transform.translation.x,
+        #     t.transform.translation.y,
+        #     t.transform.rotation.z,
+        # ]
+        particle = np.array(self.estimated_pose).reshape(-1, 3)
+        pose_laser_map = particle
+        # pose_laser_map = np.array(np.array([0.0,0.0,self.estimated_pose[2]])).reshape(-1, 3)
         poses_laser_map = np.vstack([pose_laser_map] * len(scan_msg.ranges))
+        print("pose_laser_map in actual", pose_laser_map)
         # print("pose_laser_map", poses_laser_map)
         # 0. Get scan_msg data
         ranges = np.array(scan_msg.ranges, dtype="float32")
         angle_min = scan_msg.angle_min
         angle_max = scan_msg.angle_max
         angle_increment = scan_msg.angle_increment
-
+        
         # 1. Slice up the scan
         angles = np.arange(angle_min, angle_max, angle_increment)
 
@@ -301,7 +328,7 @@ class ExampleSimNode(Node):
         x_array = ranges * np.cos(angles)  # if robot's forward is pos x
         y_array = ranges * np.sin(angles)
 
-        print("lidar ranges", x_array, y_array, angles)
+        # print("lidar ranges", x_array, y_array, angles)
         poses_range_laser = np.column_stack((x_array, y_array, angles))
         # print("poses_range_laser", poses_range_laser)
 
@@ -314,7 +341,7 @@ class ExampleSimNode(Node):
 
     def assign_estimated_lidar_ranges(self, scan_ranges, particle):
         # try:
-        #     t = self.tfBuffer.lookup_transform("map", "laser", Time())
+        #     t = self.tfBuffer.lookup_transform("map", "base_link", Time())
         # except Exception as e:
         #     print("failed to get transform:", e)
         #     return None
@@ -323,12 +350,15 @@ class ExampleSimNode(Node):
         # pose_laser_map = [t.transform.translation.x, t.transform.translation.y, t.transform.rotation.z]
 
         # print("lidar pose", pose_laser_map)
+        # particle = np.array([0.0,0.0,0.0])
+        # particle = np.array(np.array([0.0,0.0,0.0])).reshape(-1, 3)
         # poses_laser_map = np.vstack([pose_laser_map] * len(scan_ranges))
+        print("particle in estimated", particle)
         poses_laser_map = np.vstack(
             [particle] * len(scan_ranges)
         )  # estimated particle is of laser to map
         # print("pose_laser_map", poses_laser_map)
-        print("shape", np.shape(scan_ranges))
+        # print("shape", np.shape(scan_ranges))
 
         # 0. Get scan_msg data
         ranges = scan_ranges.ravel()  # np.array(scan_ranges, dtype="float32")
@@ -337,24 +367,24 @@ class ExampleSimNode(Node):
         angle_increment = (
             self.scan_field_of_view / np.shape(scan_ranges)[1]
         )  # self.scan_theta_discretization #scan_msg.angle_increment
-        print("angle_increment", angle_increment)
+        # print("angle_increment", angle_increment)
         # 1. Slice up the scan
-        angles = np.arange(angle_min, angle_max, angle_increment)
+        angles = np.arange(angle_min, angle_max, angle_increment) #- particle[0][2]#np.pi/2
 
         # 1a. Get x,y position of each point relative to robot laser frame
         # we know mapping from ranges to angle
         x_array = ranges * np.cos(angles)  # if robot's forward is pos x
         y_array = ranges * np.sin(angles)
 
-        print("estimated lidar ranges", x_array, y_array, angles)
+        # print("estimated lidar ranges", x_array, y_array, angles)
         poses_range_laser = np.column_stack((x_array, y_array, angles))
         # print("poses_range_laser", poses_range_laser)
         pose_range_map = self.pose_transform_tools.get_new_poses(
             poses_laser_map, poses_range_laser
         )
 
-        self.estimated_x = poses_range_laser[:, 0]  # - particle[0][0]
-        self.estimated_y = poses_range_laser[:, 1]  # + particle[0][1]
+        self.estimated_x = poses_range_laser[:, 0] + particle[0][0]
+        self.estimated_y = poses_range_laser[:, 1] + particle[0][1]
 
 
 def examplemain():
@@ -367,7 +397,8 @@ def examplemain():
 def examplemain2():
     """examle (particles_model)"""
     rclpy.init()
-    rclpy.spin(ExampleSimNode(particles_model(particles_params(n_particles=200))))
+    print("initalized example2")
+    rclpy.spin(ExampleSimNode(particles_model(particles_params(n_particles=200, plot_level=10))))
     assert False, "unreachable"
 
 
