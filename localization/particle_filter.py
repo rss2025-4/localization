@@ -1,5 +1,8 @@
 from localization.sensor_model import SensorModel
 from localization.motion_model import MotionModel
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
+
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
@@ -13,6 +16,8 @@ from geometry_msgs.msg import Point
 
 
 from rclpy.node import Node
+import numpy as np
+from sensor_msgs.msg import LaserScan
 import rclpy
 
 assert rclpy
@@ -43,7 +48,7 @@ class ParticleFilter(Node):
         
         self.NUM_PARTICLES = 200
 
-        self.laser_callback_freq = 50 #Hz
+        self.laser_callback_freq = 20 #Hz
         self.laser_callback_prev_time = 0.0
 
         self.laser_sub = self.create_subscription(LaserScan, scan_topic,
@@ -75,7 +80,6 @@ class ParticleFilter(Node):
         #     "/map" frame.
 
         self.odom_pub = self.create_publisher(Odometry, "/pf/pose/odom", 1)
-
         # Initialize the models
         self.motion_model = MotionModel(self)
         self.sensor_model = SensorModel(self)
@@ -103,15 +107,13 @@ class ParticleFilter(Node):
 
        
     def laser_callback(self, msg):
-        # return
-
-        current_time_msg = self.get_clock().now()
-        seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
-        current_time = seconds + nanoseconds * 1e-9
-        if current_time - self.laser_callback_prev_time < 1.0/self.laser_callback_freq:
-            return
-        pass
-        self.laser_callback_prev_time = current_time
+        # current_time_msg = self.get_clock().now()
+        # seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
+        # current_time = seconds + nanoseconds * 1e-9
+        # if current_time - self.laser_callback_prev_time < 1.0/self.laser_callback_freq:
+        #     return
+        # pass
+        # self.laser_callback_prev_time = current_time
         observation = msg.ranges
         self.particle_probabilites = self.sensor_model.evaluate(self.particles, observation)
         
@@ -121,7 +123,7 @@ class ParticleFilter(Node):
         self.get_logger().info("laser callback")
 
     def odom_callback(self, msg):
-        
+        # pass
         x_velocity = msg.twist.twist.linear.x
         y_velocity = msg.twist.twist.linear.y
         angular_velocity = msg.twist.twist.angular.z
@@ -153,8 +155,8 @@ class ParticleFilter(Node):
 
         self.get_logger().info("hi %s" % particle_probabilities)
 
-        if np.sum(particle_probabilities) <= 1.0:
-            return particles
+        # if np.sum(particle_probabilities) <= 1.0:
+        #     return particles
             
         selections = np.random.choice(options, len(particles), p=particle_probabilities)
         
@@ -214,7 +216,7 @@ class ParticleFilter(Node):
 
 
         t.header.frame_id = 'map'
-        t.child_frame_id = self.particle_filter_frame
+        t.child_frame_id = 'base_link_pf'
 
         # Turtle only exists in 2D, thus we get x and y translation
         # coordinates from the message and set the z coordinate to 0
@@ -245,7 +247,7 @@ class ParticleFilter(Node):
         particle_pts.scale.x = 0.1
         particle_pts.scale.y = 0.1
         particle_pts.color.a = 1.
-        particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 1.0, 0.69, 0.651
+        particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 0.482, 0.431, 0.922
         
         for particle in self.particles:
             p = Point()
@@ -263,7 +265,7 @@ class ParticleFilter(Node):
         std_y = 0.5
         std_theta = 0.25
         
-        x = msg.pose.pose.position.x # try initializing forward a bit
+        x = msg.pose.pose.position.x + 1.0 # try initializing forward a bit
         y = msg.pose.pose.position.y
         roll, pitch, yaw = euler_from_quaternion([msg.pose.pose.orientation.x,
                                                     msg.pose.pose.orientation.y,
