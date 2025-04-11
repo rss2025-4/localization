@@ -1,5 +1,8 @@
 from localization.sensor_model import SensorModel
 from localization.motion_model import MotionModel
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
+
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
@@ -13,6 +16,8 @@ from geometry_msgs.msg import Point
 
 
 from rclpy.node import Node
+import numpy as np
+from sensor_msgs.msg import LaserScan
 import rclpy
 
 assert rclpy
@@ -43,7 +48,7 @@ class ParticleFilter(Node):
         
         self.NUM_PARTICLES = 200
 
-        self.laser_callback_freq = 50 #Hz
+        self.laser_callback_freq = 20 #Hz
         self.laser_callback_prev_time = 0.0
 
         self.laser_sub = self.create_subscription(LaserScan, scan_topic,
@@ -75,7 +80,6 @@ class ParticleFilter(Node):
         #     "/map" frame.
 
         self.odom_pub = self.create_publisher(Odometry, "/pf/pose/odom", 1)
-
         # Initialize the models
         self.motion_model = MotionModel(self)
         self.sensor_model = SensorModel(self)
@@ -96,6 +100,7 @@ class ParticleFilter(Node):
         self.particles = np.zeros((self.NUM_PARTICLES, 3))
         self.particle_publisher = self.create_publisher(Marker, "/particle", 1)
         self.particle_estimate_publisher = self.create_publisher(Marker, "/particle_estimate", 1)
+        self.particle_probabilites = np.ones(self.NUM_PARTICLES, dtype=float)
         
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
@@ -103,25 +108,26 @@ class ParticleFilter(Node):
 
        
     def laser_callback(self, msg):
-        # return
-
-        current_time_msg = self.get_clock().now()
-        seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
-        current_time = seconds + nanoseconds * 1e-9
-        if current_time - self.laser_callback_prev_time < 1.0/self.laser_callback_freq:
-            return
-        pass
-        self.laser_callback_prev_time = current_time
+        # current_time_msg = self.get_clock().now()
+        # seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
+        # current_time = seconds + nanoseconds * 1e-9
+        # if current_time - self.laser_callback_prev_time < 1.0/self.laser_callback_freq:
+        #     return
+        # pass
+        # self.laser_callback_prev_time = current_time
         observation = msg.ranges
         self.particle_probabilites = self.sensor_model.evaluate(self.particles, observation)
         
         self.particles = self.resample(self.particle_probabilites, self.particles)
+        # if not self.particle_probabilites:
+        #     print("fixed")
+        #     self.particle_probabilities = np.ones(self.NUM_PARTICLES, dtype=float)
         # get array of most probabilities
         self.get_pose(self.particles) # publishes pose estimate
         self.get_logger().info("laser callback")
 
     def odom_callback(self, msg):
-        
+        # pass
         x_velocity = msg.twist.twist.linear.x
         y_velocity = msg.twist.twist.linear.y
         angular_velocity = msg.twist.twist.angular.z
@@ -137,12 +143,12 @@ class ParticleFilter(Node):
     
     def resample(self, particle_probabilities, particles):
         if particle_probabilities is None:
-            self.get_logger().info("NOT resampled")
+            self.get_logger().warn("NOT resampled")
             return self.particles
 
         # Create list of options to sample from
-        self.get_logger().info("particle_probabilities_size %s" % len(particle_probabilities))
-        self.get_logger().info("particles_size %s" % len(particles))
+        # self.get_logger().info("particle_probabilities_size %s" % len(particle_probabilities))
+        # self.get_logger().info("particles_size %s" % len(particles))
         
         
         # particle_probabilities = np.nan_to_num(particle_probabilities, nan=0)
@@ -151,10 +157,10 @@ class ParticleFilter(Node):
 
         options = np.arange(0,len(particle_probabilities),1)
 
-        self.get_logger().info("hi %s" % particle_probabilities)
+        # self.get_logger().info("hi %s" % particle_probabilities)
 
-        if np.sum(particle_probabilities) <= 1.0:
-            return particles
+        # if np.sum(particle_probabilities) <= 1.0:
+        #     return particles
             
         selections = np.random.choice(options, len(particles), p=particle_probabilities)
         
@@ -179,13 +185,17 @@ class ParticleFilter(Node):
         # particles = np.array(self.particles)
 
         # Calculate the average x and y positions
-        x_avg = np.mean(particles[:, 0])
-        y_avg = np.mean(particles[:, 1])
+        x_avg = np.average(particles[:, 0], weights = self.particle_probabilites)
+        y_avg = np.average(particles[:, 1], weights = self.particle_probabilites)
 
         # Circular mean for theta (orientation)
         theta = particles[:, 2]
+        # if not self.particle_probabilites:
+        #     print("warning doesnt exist")
         sin_sum = np.sum(np.sin(theta))
-        cos_sum = np.sum(np.cos(theta))
+        cos_sum = np.sum( np.cos(theta))
+        # sin_sum = np.sum(self.particle_probabilites * np.sin(theta))
+        # cos_sum = np.sum(self.particle_probabilites * np.cos(theta))
         
         theta_avg = np.arctan2(sin_sum, cos_sum)  # Circular mean to get average angle
         pose = [x_avg, y_avg, theta_avg]
@@ -214,7 +224,7 @@ class ParticleFilter(Node):
 
 
         t.header.frame_id = 'map'
-        t.child_frame_id = self.particle_filter_frame
+        t.child_frame_id = 'base_link'
 
         # Turtle only exists in 2D, thus we get x and y translation
         # coordinates from the message and set the z coordinate to 0
@@ -228,8 +238,8 @@ class ParticleFilter(Node):
         # q = quaternion_from_euler(0, 0, msg.pose.pose.orientation.z)
         t.transform.rotation.x = 0.0 #q[0]
         t.transform.rotation.y = 0.0 #q[1]
-        t.transform.rotation.z = theta #q[2]
-        t.transform.rotation.w = 1.0 #q[3]
+        t.transform.rotation.z = np.sin(theta/2) #q[2]
+        t.transform.rotation.w = np.cos(theta/2) #q[3]
 
         # Send the transformation
         self.tf_broadcaster.sendTransform(t)
@@ -242,10 +252,10 @@ class ParticleFilter(Node):
         
         particle_pts.header.frame_id = "/map"
         
-        particle_pts.scale.x = 0.1
-        particle_pts.scale.y = 0.1
+        particle_pts.scale.x = 0.2
+        particle_pts.scale.y = 0.2
         particle_pts.color.a = 1.
-        particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 1.0, 0.69, 0.651
+        particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 0.482, 0.431, 0.922
         
         for particle in self.particles:
             p = Point()
@@ -253,7 +263,7 @@ class ParticleFilter(Node):
             p.y = particle[1]
             particle_pts.points.append(p)
         self.particle_estimate_publisher.publish(particle_pts)
-        self.get_logger().info("published particle estimate")
+        # self.get_logger().info("published particle estimate")
 
     def pose_callback(self, msg):
         """
@@ -263,7 +273,7 @@ class ParticleFilter(Node):
         std_y = 0.5
         std_theta = 0.25
         
-        x = msg.pose.pose.position.x # try initializing forward a bit
+        x = msg.pose.pose.position.x + 1.0 # try initializing forward a bit
         y = msg.pose.pose.position.y
         roll, pitch, yaw = euler_from_quaternion([msg.pose.pose.orientation.x,
                                                     msg.pose.pose.orientation.y,
@@ -278,10 +288,10 @@ class ParticleFilter(Node):
         
         particle_pts.header.frame_id = "/map"
         
-        particle_pts.scale.x = 0.1
-        particle_pts.scale.y = 0.1
+        particle_pts.scale.x = 0.2
+        particle_pts.scale.y = 0.2
         particle_pts.color.a = 1.
-        particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 1.0, 0.69, 0.651
+        particle_pts.color.r, particle_pts.color.b, particle_pts.color.g = 1.0, 0.0, 0.0
         
         for particle in self.particles:
             p = Point()
