@@ -224,7 +224,7 @@ class ParticleFilter(Node):
 
 
         t.header.frame_id = 'map'
-        t.child_frame_id = 'base_link'
+        t.child_frame_id = 'base_link_pf'
 
         # Turtle only exists in 2D, thus we get x and y translation
         # coordinates from the message and set the z coordinate to 0
