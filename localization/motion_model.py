@@ -24,6 +24,7 @@ class MotionModel():  #  for unit tests, remove Node superclass
     def __init__(self,node): # originally (self, node) - for unit tests, make sure "(self, node)" not "(self)"
         ####################################
         # TODO
+        self.node = node
         # super().__init__("motion_model") # originally not here
         self.pose_transform_tools = PoseTransformTools()
         self.debug = False # for visualizing motion model particles
@@ -103,10 +104,14 @@ class MotionModel():  #  for unit tests, remove Node superclass
             # raise ValueError 
             exit() 
             
-
-        dx = -x_velocity * dt
-        dy = -y_velocity * dt
-        dtheta = -angular_velocity * dt
+        if self.node.is_sim:
+            dx = x_velocity * dt
+            dy = y_velocity * dt
+            dtheta = angular_velocity * dt
+        else:
+            dx = -x_velocity * dt
+            dy = -y_velocity * dt
+            dtheta = -angular_velocity * dt
         
 
         # print("dt", dt)

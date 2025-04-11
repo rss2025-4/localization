@@ -100,7 +100,9 @@ class ParticleFilter(Node):
         self.particles = np.zeros((self.NUM_PARTICLES, 3))
         self.particle_publisher = self.create_publisher(Marker, "/particle", 1)
         self.particle_estimate_publisher = self.create_publisher(Marker, "/particle_estimate", 1)
-        self.particle_probabilites = np.ones(self.NUM_PARTICLES, dtype=float)
+        self.particle_probs = np.ones(self.NUM_PARTICLES, dtype=float)
+        self.is_sim = self.particle_filter_frame == "/base_link_pf"
+        print(self.particle_filter_frame, "/base_link_pf")
         
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
@@ -116,13 +118,9 @@ class ParticleFilter(Node):
         # pass
         # self.laser_callback_prev_time = current_time
         observation = msg.ranges
-        self.particle_probabilites = self.sensor_model.evaluate(self.particles, observation)
+        self.particle_probs = self.sensor_model.evaluate(self.particles, observation)
         
-        self.particles = self.resample(self.particle_probabilites, self.particles)
-        # if not self.particle_probabilites:
-        #     print("fixed")
-        #     self.particle_probabilities = np.ones(self.NUM_PARTICLES, dtype=float)
-        # get array of most probabilities
+        self.particles = self.resample(self.particle_probs, self.particles)
         self.get_pose(self.particles) # publishes pose estimate
         self.get_logger().info("laser callback")
 
@@ -141,28 +139,28 @@ class ParticleFilter(Node):
         self.get_pose(self.particles) # publishes pose estimate
         self.get_logger().info("odom callback")
     
-    def resample(self, particle_probabilities, particles):
-        if particle_probabilities is None:
+    def resample(self, particle_probs, particles):
+        if particle_probs is None:
             self.get_logger().warn("NOT resampled")
             return self.particles
-
+        self.is_sim = self.particle_filter_frame == "/base_link_pf"
         # Create list of options to sample from
-        # self.get_logger().info("particle_probabilities_size %s" % len(particle_probabilities))
+        # self.get_logger().info("particle_probabilities_size %s" % len(particle_probs))
         # self.get_logger().info("particles_size %s" % len(particles))
         
         
-        # particle_probabilities = np.nan_to_num(particle_probabilities, nan=0)
-        particle_probabilities = particle_probabilities / np.sum(particle_probabilities)
-        particle_probabilities = np.nan_to_num(particle_probabilities, nan=0)
+        # particle_probs = np.nan_to_num(particle_probs, nan=0)
+        particle_probs = particle_probs / np.sum(particle_probs)
+        particle_probs = np.nan_to_num(particle_probs, nan=0)
 
-        options = np.arange(0,len(particle_probabilities),1)
+        options = np.arange(0,len(particle_probs),1)
 
-        # self.get_logger().info("hi %s" % particle_probabilities)
+        # self.get_logger().info("hi %s" % particle_probs)
 
-        # if np.sum(particle_probabilities) <= 1.0:
+        # if np.sum(particle_probs) <= 1.0:
         #     return particles
             
-        selections = np.random.choice(options, len(particles), p=particle_probabilities)
+        selections = np.random.choice(options, len(particles), p=particle_probs)
         
         self.get_logger().info("resampled")
         return particles[selections]
@@ -185,17 +183,14 @@ class ParticleFilter(Node):
         # particles = np.array(self.particles)
 
         # Calculate the average x and y positions
-        x_avg = np.average(particles[:, 0], weights = self.particle_probabilites)
-        y_avg = np.average(particles[:, 1], weights = self.particle_probabilites)
+        x_avg = np.average(particles[:, 0], weights = self.particle_probs)
+        y_avg = np.average(particles[:, 1], weights = self.particle_probs)
 
         # Circular mean for theta (orientation)
         theta = particles[:, 2]
-        # if not self.particle_probabilites:
-        #     print("warning doesnt exist")
         sin_sum = np.sum(np.sin(theta))
         cos_sum = np.sum( np.cos(theta))
-        # sin_sum = np.sum(self.particle_probabilites * np.sin(theta))
-        # cos_sum = np.sum(self.particle_probabilites * np.cos(theta))
+       
         
         theta_avg = np.arctan2(sin_sum, cos_sum)  # Circular mean to get average angle
         pose = [x_avg, y_avg, theta_avg]
@@ -224,7 +219,8 @@ class ParticleFilter(Node):
 
 
         t.header.frame_id = 'map'
-        t.child_frame_id = 'base_link_pf'
+        
+        t.child_frame_id = self.particle_filter_frame
 
         # Turtle only exists in 2D, thus we get x and y translation
         # coordinates from the message and set the z coordinate to 0
