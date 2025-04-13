@@ -27,7 +27,7 @@ class MotionModel():  #  for unit tests, remove Node superclass
         self.node = node
         # super().__init__("motion_model") # originally not here
         self.pose_transform_tools = PoseTransformTools()
-        self.debug = False # for visualizing motion model particles
+        self.debug = False # for visualizing motion model particles IN SIM
 
         # Do any precomputation for the motion
         # model here.

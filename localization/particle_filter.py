@@ -102,7 +102,7 @@ class ParticleFilter(Node):
         self.particle_estimate_publisher = self.create_publisher(Marker, "/particle_estimate", 1)
         self.particle_probs = np.ones(self.NUM_PARTICLES, dtype=float)
         self.is_sim = self.particle_filter_frame == "/base_link_pf"
-        print(self.particle_filter_frame, "/base_link_pf")
+        # print(self.particle_filter_frame, "/base_link_pf")
         
         # Publish a transformation frame between the map
         # and the particle_filter_frame.
