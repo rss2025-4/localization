@@ -41,14 +41,14 @@ class MotionModel():  #  for unit tests, remove Node superclass
 
         if self.deterministic is False:
             # self.v_std = 0.1
-            self.dx_std = 0.01
-            self.dy_std = 0.01
-            self.theta_std = 0.01
+            self.dx_std = 0.1
+            self.dy_std = 0.025
+            self.theta_std = 0.1
         else:
             # self.v_std = 0.0
-            self.dx_std = 0.0
-            self.dy_std = 0.0
-            self.theta_std = 0.0
+            self.dx_std = 0.00
+            self.dy_std = 0.00
+            self.theta_std = 0.00
         
         
 
@@ -104,9 +104,12 @@ class MotionModel():  #  for unit tests, remove Node superclass
             exit() 
             
 
-        dx = -x_velocity * dt
-        dy = -y_velocity * dt
-        dtheta = -angular_velocity * dt
+        dx = x_velocity * dt
+        dx *= -1
+        dy = y_velocity * dt
+        dy *= -1
+        dtheta = angular_velocity * dt
+        dtheta *= -1
         
 
         # print("dt", dt)

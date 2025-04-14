@@ -10,7 +10,7 @@ from nav_msgs.msg import OccupancyGrid, Odometry
 from odom_transformer.transformer import Transformer
 from rclpy.node import Node
 from rclpy.time import Time
-from scan_simulator_2d import PyScanSimulator2D
+# from scan_simulator_2d import PyScanSimulator2D
 from sensor_msgs.msg import LaserScan
 from tf2_ros import (
     Node,
@@ -21,7 +21,7 @@ from tf2_ros import (
 from tf_transformations import euler_from_quaternion
 from visualization_msgs.msg import Marker
 
-from localization.helpers import PoseTransformTools
+# from localization.helpers import PoseTransformTools
 
 # from .api_alan import LocalizationBase, localization_params
 
@@ -31,7 +31,7 @@ class ExampleSimNode(Node):
         self, controller_init: Callable[[localization_params], LocalizationBase]
     ):
         super().__init__("ExampleSimNode")
-        self.pose_transform_tools = PoseTransformTools()
+        # self.pose_transform_tools = PoseTransformTools()
 
         self.num_beams_per_particle = 100
         self.scan_theta_discretization = 500.0
@@ -84,18 +84,18 @@ class ExampleSimNode(Node):
 
         self.initial_time = self.get_clock().now()
         self.timer_length = 60.0
-        self.create_timer(0.1, self.check_duration)
+        # self.create_timer(0.1, self.check_duration)
 
         self.estimated_pose = None
 
-        # scan simulator
-        self.scan_sim = PyScanSimulator2D(
-            self.num_beams_per_particle,
-            self.scan_field_of_view,
-            0,  # This is not the simulator, don't add noise
-            0.01,  # This is used as an epsilon
-            self.scan_theta_discretization,
-        )
+        # # scan simulator
+        # self.scan_sim = PyScanSimulator2D(
+        #     self.num_beams_per_particle,
+        #     self.scan_field_of_view,
+        #     0,  # This is not the simulator, don't add noise
+        #     0.01,  # This is used as an epsilon
+        #     self.scan_theta_discretization,
+        # )
 
         self.odom_transformer = None
 
@@ -106,7 +106,7 @@ class ExampleSimNode(Node):
             try:
                 self.odom_transformer = Transformer(
                     self.tfBuffer.lookup_transform(
-                        "laser", "base_link", Time()
+                        "laser_model", "base_link", Time()
                     ).transform
                 )
             except Exception as e:
@@ -122,7 +122,7 @@ class ExampleSimNode(Node):
 
             t = TransformStamped()
             t.header = msg.header
-            t.child_frame_id = "laser"
+            t.child_frame_id = "laser_model"
 
             pos = pos_laser.pose.position
             t.transform.translation.x = pos.x
@@ -139,41 +139,42 @@ class ExampleSimNode(Node):
                 map=map_msg,
                 n_laser_points=1081,  # added for real racecar
                 map_frame="map",
+                laser_frame="laser_model",
                 marker_callback=self.marker_callback,
-                ground_truth_callback=self.ground_truth_callback,
+                # ground_truth_callback=self.ground_truth_callback,
             )
         )
         assert isinstance(self.controller, LocalizationBase)
 
-        # For scan sim
-        # Convert the map to a numpy array
-        self.map = np.array(map_msg.data, np.double) / 100.0
-        self.map = np.clip(self.map, 0, 1)
-        print("map", self.map)  
-        # Reshape the map to the correct size
-        self.map_to_plot = np.reshape(
-            self.map, (map_msg.info.height, map_msg.info.width)
-        )  # (map_msg.info.height, map_msg.info.width)
-        print("map_to_plot", self.map_to_plot)
-        self.resolution = map_msg.info.resolution
+        # # For scan sim
+        # # Convert the map to a numpy array
+        # self.map = np.array(map_msg.data, np.double) / 100.0
+        # self.map = np.clip(self.map, 0, 1)
+        # print("map", self.map)  
+        # # Reshape the map to the correct size
+        # self.map_to_plot = np.reshape(
+        #     self.map, (map_msg.info.height, map_msg.info.width)
+        # )  # (map_msg.info.height, map_msg.info.width)
+        # print("map_to_plot", self.map_to_plot)
+        # self.resolution = map_msg.info.resolution
 
-        # Convert the origin to a tuple
-        origin_p = map_msg.info.origin.position
-        origin_o = map_msg.info.origin.orientation
-        origin_o = euler_from_quaternion(
-            (origin_o.x, origin_o.y, origin_o.z, origin_o.w)
-        )
-        origin = (origin_p.x, origin_p.y, origin_o[2])
+        # # Convert the origin to a tuple
+        # origin_p = map_msg.info.origin.position
+        # origin_o = map_msg.info.origin.orientation
+        # origin_o = euler_from_quaternion(
+        #     (origin_o.x, origin_o.y, origin_o.z, origin_o.w)
+        # )
+        # origin = (origin_p.x, origin_p.y, origin_o[2])
 
-        # Initialize a map with the laser scan
-        self.scan_sim.set_map(
-            self.map,
-            map_msg.info.height,
-            map_msg.info.width,
-            map_msg.info.resolution,
-            origin,
-            0.5,
-        )  # Consider anything < 0.5 to be free
+        # # Initialize a map with the laser scan
+        # self.scan_sim.set_map(
+        #     self.map,
+        #     map_msg.info.height,
+        #     map_msg.info.width,
+        #     map_msg.info.resolution,
+        #     origin,
+        #     0.5,
+        # )  # Consider anything < 0.5 to be free
 
         # Make the map set
         self.map_set = True
@@ -192,7 +193,7 @@ class ExampleSimNode(Node):
             msg.twist.twist.angular.z = -msg.twist.twist.angular.z
 
             assert msg.child_frame_id == "base_link"
-            odom = Odometry(header=msg.header, child_frame_id="laser")
+            odom = Odometry(header=msg.header, child_frame_id="laser_model")
             # odom = Odometry(header="map", child_frame_id="laser")
             odom.pose = self.odom_transformer.transform_pose(msg.pose)
             odom.twist = self.odom_transformer.transform_twist(msg.twist)
@@ -314,30 +315,30 @@ class ExampleSimNode(Node):
         poses_laser_map = np.vstack([pose_laser_map] * len(scan_msg.ranges))
         print("pose_laser_map in actual", pose_laser_map)
         # print("pose_laser_map", poses_laser_map)
-        # 0. Get scan_msg data
-        ranges = np.array(scan_msg.ranges, dtype="float32")
-        angle_min = scan_msg.angle_min
-        angle_max = scan_msg.angle_max
-        angle_increment = scan_msg.angle_increment
+        # # 0. Get scan_msg data
+        # ranges = np.array(scan_msg.ranges, dtype="float32")
+        # angle_min = scan_msg.angle_min
+        # angle_max = scan_msg.angle_max
+        # angle_increment = scan_msg.angle_increment
         
-        # 1. Slice up the scan
-        angles = np.arange(angle_min, angle_max, angle_increment)
+        # # 1. Slice up the scan
+        # angles = np.arange(angle_min, angle_max, angle_increment)
 
-        # 1a. Get x,y position of each point relative to robot laser frame
-        # we know mapping from ranges to angle
-        x_array = ranges * np.cos(angles)  # if robot's forward is pos x
-        y_array = ranges * np.sin(angles)
+        # # 1a. Get x,y position of each point relative to robot laser frame
+        # # we know mapping from ranges to angle
+        # x_array = ranges * np.cos(angles)  # if robot's forward is pos x
+        # y_array = ranges * np.sin(angles)
 
-        # print("lidar ranges", x_array, y_array, angles)
-        poses_range_laser = np.column_stack((x_array, y_array, angles))
-        # print("poses_range_laser", poses_range_laser)
+        # # print("lidar ranges", x_array, y_array, angles)
+        # poses_range_laser = np.column_stack((x_array, y_array, angles))
+        # # print("poses_range_laser", poses_range_laser)
 
-        pose_range_map = self.pose_transform_tools.get_new_poses(
-            poses_laser_map, poses_range_laser
-        )
+        # pose_range_map = self.pose_transform_tools.get_new_poses(
+        #     poses_laser_map, poses_range_laser
+        # )
 
-        self.actual_x = pose_range_map[:, 0]
-        self.actual_y = pose_range_map[:, 1]
+        # self.actual_x = pose_range_map[:, 0]
+        # self.actual_y = pose_range_map[:, 1]
 
     def assign_estimated_lidar_ranges(self, scan_ranges, particle):
         # try:
@@ -398,7 +399,7 @@ def examplemain2():
     """examle (particles_model)"""
     rclpy.init()
     print("initalized example2")
-    rclpy.spin(ExampleSimNode(particles_model(particles_params(n_particles=200, plot_level=10))))
+    rclpy.spin(ExampleSimNode(particles_model(particles_params(n_particles=200)))) #in _ground_truth
     assert False, "unreachable"
 
 
