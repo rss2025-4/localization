@@ -24,6 +24,8 @@ assert rclpy
 
 import numpy as np
 
+import time
+
 class ParticleFilter(Node):
 
     def __init__(self):
@@ -87,7 +89,7 @@ class ParticleFilter(Node):
 
         # visualize motion model particles
         # self.particles_pub = self.create_publisher(Marker, "/motion_model_particles", 1)
-        self.get_logger().info("=============+READY+=============")
+        self.get_logger().info("=============+hey READY+=============")
 
         # Implement the MCL algorithm
         # using the sensor model and the motion model
@@ -106,25 +108,43 @@ class ParticleFilter(Node):
         # and the particle_filter_frame.
         self.tf_broadcaster = TransformBroadcaster(self)
 
+        self.laser_count = 0
+        self.laser_counts_to_skip = 10
+
+        
+
        
     def laser_callback(self, msg):
-        # current_time_msg = self.get_clock().now()
-        # seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
-        # current_time = seconds + nanoseconds * 1e-9
-        # if current_time - self.laser_callback_prev_time < 1.0/self.laser_callback_freq:
-        #     return
-        # pass
-        # self.laser_callback_prev_time = current_time
-        observation = msg.ranges
-        self.particle_probabilites = self.sensor_model.evaluate(self.particles, observation)
-        
-        self.particles = self.resample(self.particle_probabilites, self.particles)
-        # if not self.particle_probabilites:
-        #     print("fixed")
-        #     self.particle_probabilities = np.ones(self.NUM_PARTICLES, dtype=float)
-        # get array of most probabilities
-        self.get_pose(self.particles) # publishes pose estimate
-        self.get_logger().info("laser callback")
+        if self.laser_count > self.laser_counts_to_skip:
+            start_time = time.time()
+            # current_time_msg = self.get_clock().now()
+            # seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
+            # current_time = seconds + nanoseconds * 1e-9
+            # if current_time - self.laser_callback_prev_time < 1.0/self.laser_callback_freq:
+            #     return
+            # pass
+            # self.laser_callback_prev_time = current_time
+            try:
+                observation = msg.ranges
+                self.particle_probabilites = self.sensor_model.evaluate(self.particles, observation)
+                
+                self.particles = self.resample(self.particle_probabilites, self.particles)
+                # if not self.particle_probabilites:
+                #     print("fixed")
+                #     self.particle_probabilities = np.ones(self.NUM_PARTICLES, dtype=float)
+                # get array of most probabilities
+                self.get_pose(self.particles) # publishes pose estimate
+            # self.get_logger().info("laser callback")
+                self.laser_count = 0
+            except:
+                self.get_logger().info("laser callback failure")
+            finally:
+                
+                time_elapsed = time.time()-start_time
+                self.get_logger().info("time elapsed %s" % time_elapsed)
+        else:
+            self.laser_count += 1
+
 
     def odom_callback(self, msg):
         # pass
@@ -139,11 +159,11 @@ class ParticleFilter(Node):
         self.particles = self.motion_model.evaluate(self.particles, odometry)
         
         self.get_pose(self.particles) # publishes pose estimate
-        self.get_logger().info("odom callback")
+        # self.get_logger().info("odom callback")
     
     def resample(self, particle_probabilities, particles):
         if particle_probabilities is None:
-            self.get_logger().warn("NOT resampled")
+            # self.get_logger().warn("NOT resampled")
             return self.particles
 
         # Create list of options to sample from
@@ -164,7 +184,7 @@ class ParticleFilter(Node):
             
         selections = np.random.choice(options, len(particles), p=particle_probabilities)
         
-        self.get_logger().info("resampled")
+        # self.get_logger().info("resampled")
         return particles[selections]
        
     def get_pose(self, particles):
@@ -212,7 +232,7 @@ class ParticleFilter(Node):
         # self.get_logger().info("Published pose estimate")
 
         self.publish_transform(pose)
-        self.get_logger().info("Published transform pf to map")
+        # self.get_logger().info("Published transform pf to map")
 
     def publish_transform(self,pose):
         [x,y,theta] = pose
