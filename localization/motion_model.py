@@ -42,9 +42,9 @@ class MotionModel():  #  for unit tests, remove Node superclass
 
         if self.deterministic is False:
             # self.v_std = 0.1
-            self.dx_std = 0.01
-            self.dy_std = 0.01
-            self.theta_std = 0.01
+            self.dx_std = 0.1
+            self.dy_std = 0.1
+            self.theta_std = 0.05
         else:
             # self.v_std = 0.0
             self.dx_std = 0.0
@@ -128,11 +128,14 @@ class MotionModel():  #  for unit tests, remove Node superclass
     
         # Calculate gaussian distribution about velocity and theta
         # syntax: np.random.normal(mean, std)
-        dx_distribution = np.random.normal(dx, self.dx_std, len(particles))
-        dy_distribution = np.random.normal(dy, self.dy_std, len(particles))
-        theta_distribution = np.random.normal(dtheta, self.theta_std, len(particles))
+        dx_distribution = np.random.normal(0, self.dx_std, len(particles))
+        dy_distribution = np.random.normal(0, self.dy_std, len(particles))
+        theta_distribution = np.random.normal(0, self.theta_std, len(particles))
+        # dx_distribution = np.random.normal(dx, self.dx_std, len(particles))
+        # dy_distribution = np.random.normal(dy, self.dy_std, len(particles))
+        # theta_distribution = np.random.normal(dtheta, self.theta_std, len(particles))
         
-        deltaX_all = np.stack((dx_distribution, dy_distribution, theta_distribution), axis=-1)
+        deltaX_all = np.stack((dx_distribution+dx, dy_distribution+dy, theta_distribution+dtheta), axis=-1)
 
         x_prev, y_prev, theta_prev = np.array(particles).T
         
