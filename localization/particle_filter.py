@@ -196,10 +196,16 @@ class ParticleFilter(Node):
         pose = [x_avg, y_avg, theta_avg]
         # publish pose 
         odom_msg = Odometry()
+        odom_msg.header.frame_id = 'map'
+        odom_msg.header.stamp = self.get_clock().now().to_msg()
         odom_msg.pose.pose.position.x = x_avg
         odom_msg.pose.pose.position.y = y_avg
-        odom_msg.pose.pose.orientation.z = theta_avg
 
+        odom_msg.pose.pose.orientation.x = 0.0
+        odom_msg.pose.pose.orientation.y = 0.0
+        odom_msg.pose.pose.orientation.z = np.sin(theta_avg/2)
+        odom_msg.pose.pose.orientation.w = np.cos(theta_avg/2)
+        
         pose = [x_avg,y_avg,theta_avg]
         # print("pose estimate", x_avg, y_avg, theta_avg)
 
