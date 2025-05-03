@@ -111,6 +111,7 @@ class ParticleFilter(Node):
         self.laser_count = 0
         self.laser_counts_to_skip = 10
 
+        self.prev_time = None
         
 
        
@@ -148,6 +149,7 @@ class ParticleFilter(Node):
 
     def odom_callback(self, msg):
         # pass
+        # if self.prev_time is not None:
         x_velocity = msg.twist.twist.linear.x
         y_velocity = msg.twist.twist.linear.y
         angular_velocity = msg.twist.twist.angular.z
@@ -155,11 +157,19 @@ class ParticleFilter(Node):
         seconds, nanoseconds = current_time_msg.seconds_nanoseconds()
         current_time = seconds + nanoseconds * 1e-9
 
-        odometry = self.motion_model.update_odometry(x_velocity, y_velocity, angular_velocity, current_time)
+        if self.prev_time is None:
+            dt = 1
+        else:
+            dt = current_time - self.prev_time
+
+        odometry = np.array([x_velocity, y_velocity, angular_velocity])*dt #self.motion_model.update_odometry
+        
         self.particles = self.motion_model.evaluate(self.particles, odometry)
         
         self.get_pose(self.particles) # publishes pose estimate
-        # self.get_logger().info("odom callback")
+        self.get_logger().info("odom callback")
+        self.prev_time = current_time
+
     
     def resample(self, particle_probabilities, particles):
         if particle_probabilities is None:
@@ -221,9 +231,15 @@ class ParticleFilter(Node):
         pose = [x_avg, y_avg, theta_avg]
         # publish pose 
         odom_msg = Odometry()
+        odom_msg.header.frame_id = 'map'
+        odom_msg.header.stamp = self.get_clock().now().to_msg()
         odom_msg.pose.pose.position.x = x_avg
         odom_msg.pose.pose.position.y = y_avg
-        odom_msg.pose.pose.orientation.z = theta_avg
+
+        odom_msg.pose.pose.orientation.x = 0.0
+        odom_msg.pose.pose.orientation.y = 0.0
+        odom_msg.pose.pose.orientation.z = np.sin(theta_avg/2)
+        odom_msg.pose.pose.orientation.w = np.cos(theta_avg/2)
 
         pose = [x_avg,y_avg,theta_avg]
         # print("pose estimate", x_avg, y_avg, theta_avg)
@@ -293,7 +309,7 @@ class ParticleFilter(Node):
         std_y = 0.5
         std_theta = 0.25
         
-        x = msg.pose.pose.position.x + 1.0 # try initializing forward a bit
+        x = msg.pose.pose.position.x # try initializing forward a bit
         y = msg.pose.pose.position.y
         roll, pitch, yaw = euler_from_quaternion([msg.pose.pose.orientation.x,
                                                     msg.pose.pose.orientation.y,
