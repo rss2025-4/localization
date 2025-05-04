@@ -43,7 +43,7 @@ class MotionModel():  #  for unit tests, remove Node superclass
             # self.v_std = 0.1
             self.dx_std = 0.1
             self.dy_std = 0.025
-            self.theta_std = 0.1
+            self.theta_std = 0.2
         else:
             # self.v_std = 0.0
             self.dx_std = 0.00

@@ -109,7 +109,7 @@ class ParticleFilter(Node):
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.laser_count = 0
-        self.laser_counts_to_skip = 10
+        self.laser_counts_to_skip = 0
 
         self.prev_time = None
         
@@ -138,11 +138,12 @@ class ParticleFilter(Node):
             # self.get_logger().info("laser callback")
                 self.laser_count = 0
             except:
-                self.get_logger().info("laser callback failure")
+                pass
+                # self.get_logger().info("laser callback failure")
             finally:
                 
                 time_elapsed = time.time()-start_time
-                self.get_logger().info("time elapsed %s" % time_elapsed)
+                # self.get_logger().info("time elapsed %s" % time_elapsed)
         else:
             self.laser_count += 1
 
@@ -167,7 +168,7 @@ class ParticleFilter(Node):
         self.particles = self.motion_model.evaluate(self.particles, odometry)
         
         self.get_pose(self.particles) # publishes pose estimate
-        self.get_logger().info("odom callback")
+        # self.get_logger().info("odom callback")
         self.prev_time = current_time
 
     
