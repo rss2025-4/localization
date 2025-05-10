@@ -270,7 +270,7 @@ class SensorModel:
 
         particle_probabilities = np.exp(np.sum(np.log(p_z), axis=1))
 
-        return particle_probabilities ** (1/3)
+        return particle_probabilities ** (1/2.2) #np.array(np.power(probs, 1 / 2.2)) #
 
         # # for j in range(N):
         #     # scan is a list of the form [d1, d2, d3, ...]

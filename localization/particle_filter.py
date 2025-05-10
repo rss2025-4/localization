@@ -163,7 +163,7 @@ class ParticleFilter(Node):
         else:
             dt = current_time - self.prev_time
 
-        odometry = np.array([x_velocity, y_velocity, angular_velocity])*dt #self.motion_model.update_odometry
+        odometry = np.array([-x_velocity, -y_velocity, -angular_velocity])*dt #self.motion_model.update_odometry
         
         self.particles = self.motion_model.evaluate(self.particles, odometry)
         
@@ -299,7 +299,7 @@ class ParticleFilter(Node):
             p.x = particle[0]
             p.y = particle[1]
             particle_pts.points.append(p)
-        self.particle_estimate_publisher.publish(particle_pts)
+        # self.particle_estimate_publisher.publish(particle_pts)
         # self.get_logger().info("published particle estimate")
 
     def pose_callback(self, msg):
@@ -335,7 +335,7 @@ class ParticleFilter(Node):
             p.x = particle[0]
             p.y = particle[1]
             particle_pts.points.append(p)
-        self.particle_publisher.publish(particle_pts)
+        # self.particle_publisher.publish(particle_pts)
         print("published initial particles")
 
 def main(args=None):
